@@ -22,10 +22,9 @@ function Gateway() {
   );
 
   // If God Admin, go to Factory Controller
-  const devEmails = ['migueldev97@gmail.com', 'miguelperez98@gmail.com', 'migue@urosderivas.com'];
-  const isAdmin = user?.role === 'admin' || (user?.email && devEmails.includes(user.email.toLowerCase()));
+  const isAdmin = user?.role === 'admin' || (user?.email && user.email.toLowerCase() === 'migueldev97@gmail.com');
   if (isAdmin) return <Navigate to="/admin" replace />;
-  
+
   // If not logged in, show the Factory Portal
   return <FactoryPortal />;
 }
@@ -42,7 +41,7 @@ function App() {
       <Routes>
         {/* Core AI Factory Gates */}
         <Route path="/" element={<Gateway />} />
-        
+
         {/* Premium Admin Routing */}
         <Route path="/admin/*" element={
           loading ? (
@@ -50,10 +49,9 @@ function App() {
               <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Verificando Credenciales...</div>
             </div>
           ) : (() => {
-             // FORCED FAILSAFE: Verify by email if role check fails
-             const devEmails = ['migueldev97@gmail.com', 'miguelperez98@gmail.com', 'migue@urosderivas.com'];
-             const isAdmin = user?.role === 'admin' || (user?.email && devEmails.includes(user.email.toLowerCase()));
-             return isAdmin ? <DashboardApp /> : <Navigate to="/login" replace />;
+            // FORCED FAILSAFE: Verify by email if role check fails
+            const isAdmin = user?.role === 'admin' || (user?.email && user.email.toLowerCase() === 'migueldev97@gmail.com');
+            return isAdmin ? <DashboardApp /> : <Navigate to="/login" replace />;
           })()
         } />
 
@@ -64,7 +62,7 @@ function App() {
         <Route path="/client/:tenantId/*" element={
           loading ? (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-               <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Sincronizando Acceso...</div>
+              <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Sincronizando Acceso...</div>
             </div>
           ) : user ? <ClientDashboardApp /> : <Navigate to="/login" replace />
         } />

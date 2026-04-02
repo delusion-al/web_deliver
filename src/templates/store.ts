@@ -39,18 +39,16 @@ export const useStore = create<AppState>()((set) => ({
     set({ loading: true });
     try {
       const user = await adapter.getUser();
-      
+
       // UNIVERSAL ADMIN BYPASS (FOOLPROOF V3)
       const developerEmails = [
-        'migueldev97@gmail.com', 
-        'miguelperez98@gmail.com', 
-        'migue@urosderivas.com'
+        'migueldev97@gmail.com'
       ];
-      
+
       if (user && user.email) {
         const userEmail = user.email.toLowerCase();
         if (developerEmails.includes(userEmail)) {
-           user.role = 'admin';
+          user.role = 'admin';
         }
       }
 
@@ -67,9 +65,9 @@ export const useStore = create<AppState>()((set) => ({
 
   signIn: async (email, pass) => {
     let user = await adapter.signIn(email, pass);
-    
+
     // Developer God-Mode Bypass
-    const developerEmails = ['migueldev97@gmail.com', 'miguelperez98@gmail.com', 'migue@urosderivas.com'];
+    const developerEmails = ['migueldev97@gmail.com'];
     if (user && user.email && developerEmails.includes(user.email.toLowerCase())) {
       user.role = 'admin';
     }

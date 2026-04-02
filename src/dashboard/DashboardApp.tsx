@@ -95,7 +95,38 @@ export function DashboardApp() {
         </aside>
 
         <main className="flex-1 ml-64 p-8 pl-12 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent">
-          <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
+          <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700 space-y-8">
+            {/* Global Fleet Metrics */}
+            <div className="flex gap-4">
+               <div className="flex-1 bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4 flex items-center gap-4">
+                  <div className="h-10 w-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                     <Globe size={20} className="text-blue-400" />
+                  </div>
+                  <div>
+                     <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Nodos Generados</div>
+                     <div className="text-xl font-black text-white leading-none">08</div>
+                  </div>
+               </div>
+               <div className="flex-1 bg-purple-500/5 border border-purple-500/10 rounded-2xl p-4 flex items-center gap-4">
+                  <div className="h-10 w-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                     <Bot size={20} className="text-purple-400" />
+                  </div>
+                  <div>
+                     <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Agentes en Paralelo</div>
+                     <div className="text-xl font-black text-white leading-none">24</div>
+                  </div>
+               </div>
+               <div className="flex-1 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 flex items-center gap-4">
+                  <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                     <Activity size={20} className="text-emerald-400" />
+                  </div>
+                  <div>
+                     <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Estado del Enjambre</div>
+                     <div className="text-xl font-black text-white leading-none uppercase">Activo</div>
+                  </div>
+               </div>
+            </div>
+
             {activeTab === 'leads' && <LeadsManager />}
             {activeTab === 'sites' && <SitesManager />}
             {activeTab === 'pipeline' && <PipelineMonitor />}

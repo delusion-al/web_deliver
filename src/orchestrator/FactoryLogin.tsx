@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../templates/store';
 import { useNavigate } from 'react-router-dom';
 import { Bot, Mail, Lock, ArrowRight, Loader2, Sparkles } from 'lucide-react';
@@ -6,16 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function FactoryLogin() {
-  const { signIn, signInWithGoogle } = useStore();
+  const { signIn, signInWithGoogle, user, loading } = useStore();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    if (!loading && user?.role === 'admin') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoggingIn(true);
     setError('');
     try {
       await signIn(email, password);
@@ -24,16 +31,16 @@ export function FactoryLogin() {
       window.location.href = import.meta.env.BASE_URL + '#/admin';
     } catch (err: any) {
       setError('Credenciales incorrectas. Verifica tus datos de acceso.');
-      setLoading(false);
+      setIsLoggingIn(false);
     }
   };
 
   const handleGoogle = async () => {
-    setLoading(true);
+    setIsLoggingIn(true);
     try {
       await signInWithGoogle();
     } catch (err) {
-      setLoading(false);
+      setIsLoggingIn(false);
     }
   };
 
@@ -87,8 +94,8 @@ export function FactoryLogin() {
 
             {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-medium text-center">{error}</div>}
 
-            <Button disabled={loading} className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all shadow-[0_4px_20px_rgba(37,99,235,0.3)] mt-2">
-              {loading ? <Loader2 size={20} className="animate-spin" /> : (
+            <Button disabled={isLoggingIn || loading} className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all shadow-[0_4px_20px_rgba(37,99,235,0.3)] mt-2">
+              {isLoggingIn ? <Loader2 size={20} className="animate-spin" /> : (
                 <span className="flex items-center justify-center gap-2">
                   Entrar al Panel <ArrowRight size={18} />
                 </span>
@@ -103,7 +110,7 @@ export function FactoryLogin() {
             </div>
           </div>
 
-          <Button variant="outline" onClick={handleGoogle} disabled={loading} className="w-full h-14 border-slate-800 hover:bg-slate-800 bg-transparent text-slate-300 rounded-2xl font-bold">
+          <Button variant="outline" onClick={handleGoogle} disabled={isLoggingIn || loading} className="w-full h-14 border-slate-800 hover:bg-slate-800 bg-transparent text-slate-300 rounded-2xl font-bold">
             <Sparkles size={18} className="mr-2 text-blue-500" /> Iniciar con Google
           </Button>
         </div>

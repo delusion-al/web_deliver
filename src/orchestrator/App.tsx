@@ -29,7 +29,7 @@ function Gateway() {
 }
 
 function App() {
-  const { initAuth, user } = useStore();
+  const { initAuth, user, loading } = useStore();
 
   useEffect(() => {
     initAuth();
@@ -43,7 +43,11 @@ function App() {
         
         {/* Premium Admin Routing */}
         <Route path="/admin/*" element={
-          user?.role === 'admin' ? <DashboardApp /> : <Navigate to="/login" />
+          loading ? (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+              <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Verificando Credenciales...</div>
+            </div>
+          ) : user?.role === 'admin' ? <DashboardApp /> : <Navigate to="/login" replace />
         } />
 
         {/* Global Factory Login */}
@@ -51,7 +55,11 @@ function App() {
 
         {/* Client-Specific Hubs (Tenant Management) */}
         <Route path="/client/:tenantId/*" element={
-          user ? <ClientDashboardApp /> : <Navigate to="/login" />
+          loading ? (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+               <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Sincronizando Acceso...</div>
+            </div>
+          ) : user ? <ClientDashboardApp /> : <Navigate to="/login" replace />
         } />
 
         {/* Dynamic Previews (The "Forged" Site Engine) */}

@@ -536,6 +536,23 @@ export class SupabaseAdapter implements AuthPort, MarketPort, EventPort, SystemL
     // 2. Clear previous tenant if exists (or skip)
     if (lead.tenant_id) throw new Error('Este lead ya tiene un sitio generado');
 
+    // DYNAMIC PALETTE ENGINE V2.1
+    const colorPalettes: any = {
+      default: { primary: '#3b82f6', secondary: '#0f172a', accent: '#8b5cf6', layout: 'glassmorphism' },
+      tech: { primary: '#6366f1', secondary: '#020617', accent: '#06b6d4', layout: 'neon-dark' },
+      health: { primary: '#10b981', secondary: '#064e3b', accent: '#34d399', layout: 'clean-white' },
+      restaurant: { primary: '#f43f5e', secondary: '#450a0a', accent: '#fbbf24', layout: 'elegant-gold' },
+      beauty: { primary: '#ec4899', secondary: '#500724', accent: '#f472b6', layout: 'soft-pastel' },
+      automotive: { primary: '#64748b', secondary: '#0f172a', accent: '#94a3b8', layout: 'industrial' }
+    };
+
+    const type = (lead.business_type || '').toLowerCase();
+    let theme = colorPalettes.default;
+    if (type.includes('dentist') || type.includes('gym')) theme = colorPalettes.health;
+    else if (type.includes('restaur') || type.includes('bar') || type.includes('cafe')) theme = colorPalettes.restaurant;
+    else if (type.includes('soft') || type.includes('tech')) theme = colorPalettes.tech;
+    else if (type.includes('salon') || type.includes('estetica')) theme = colorPalettes.beauty;
+
     const domainName = (lead.business_name || lead.city).toLowerCase().replace(/\s+/g, '-') + '.aifactory.dev';
 
     // 3. Create Tenant
@@ -548,17 +565,13 @@ export class SupabaseAdapter implements AuthPort, MarketPort, EventPort, SystemL
 
     if (tError) throw tError;
 
-    // 4. Create Initial Config (PREMIUM FORGE V2.0)
+    // 4. Create Initial Config (PREMIUM FORGE V2.2)
     const initialConfig = {
       tenant_id: tenant.id,
       brand: {
-        colors: { 
-          primary: '#3b82f6', 
-          secondary: '#0f172a',
-          accent: '#8b5cf6' 
-        },
+        colors: theme,
         logo_text: lead.business_name,
-        font: 'Inter'
+        font: 'Outfit'
       },
       seo: {
         title: `${lead.business_name} - ${lead.business_type} en ${lead.city}`,
@@ -573,7 +586,7 @@ export class SupabaseAdapter implements AuthPort, MarketPort, EventPort, SystemL
       pages: [
         {
           id: 'home',
-          layout: 'glassmorphism',
+          layout: theme.layout,
           hero: {
             title: lead.business_name,
             subtitle: `Tu experto local en ${lead.business_type} en ${lead.city}`,

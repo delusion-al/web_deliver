@@ -25,7 +25,7 @@ export function PipelineMonitor() {
   const fetchApprovals = async () => {
     const { data } = await supabase
       .from('swarm_approvals')
-      .select('*, tenants(name)')
+      .select('*, tenants(domain_name)')
       .eq('status', 'pending');
     if (data) setApprovals(data);
   };
@@ -98,7 +98,7 @@ export function PipelineMonitor() {
               </div>
               <p className="text-xs text-slate-300 font-mono bg-black/40 p-3 rounded border border-orange-500/10 mb-4">
                 Petición: {approval.proposed_changes.task || 'Mantenimiento General'}
-                <br/> Site: <span className="text-blue-400">{approval.tenants?.name || 'Sistema'}</span>
+                <br/> Site: <span className="text-blue-400">{approval.tenants?.domain_name || 'Sistema'}</span>
               </p>
               <div className="flex gap-2 justify-end">
                 <Button size="sm" variant="outline" className="h-7 text-[10px] border-slate-700 hover:bg-red-500/10 text-red-400" onClick={() => handleApproval(approval.id, false)}>

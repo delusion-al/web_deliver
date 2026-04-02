@@ -1,0 +1,89 @@
+---
+import type { TenantSchema } from '../schema/tenantSchema';
+
+interface Props {
+  title: string;
+  description: string;
+  config: TenantSchema;
+}
+
+const { title, description, config } = Astro.props;
+const { brand, navbar } = config;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href={brand.logo} />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+
+    <style is:inline define:vars={{ primaryColor: brand.primaryColor, secondaryColor: brand.secondaryColor }}>
+      :root {
+        --primary-color: var(--primaryColor);
+        --secondary-color: var(--secondaryColor);
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        background: white;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        text-decoration: none;
+        color: black;
+        font-weight: bold;
+        font-size: 1.25rem;
+      }
+      .nav-links {
+        display: flex;
+        gap: 2rem;
+      }
+      .nav-links a {
+        text-decoration: none;
+        color: #333;
+      }
+      .nav-links a:hover {
+        color: var(--primary-color);
+      }
+      main {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand">
+        <!-- Mock logo display -->
+        <span style="background: var(--primary-color); color: white; padding: 0.5rem 1rem; border-radius: 4px;">{brand.name}</span>
+      </a>
+      <nav class="nav-links">
+        {navbar.map(link => (
+          <a href={link.url}>{link.label}</a>
+        ))}
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer style="background: #333; color: white; padding: 2rem; text-align: center;">
+      <p>&copy; {new Date().getFullYear()} {brand.name}. Todos los derechos reservados.</p>
+    </footer>
+  </body>
+</html>

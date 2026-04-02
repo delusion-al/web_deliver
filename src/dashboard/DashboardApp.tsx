@@ -8,14 +8,17 @@ import { TeamManager } from './TeamManager';
 import { Button } from '@/components/ui/button';
 import { Globe, Activity, Settings, LogOut, Bot, Search, ShieldCheck } from 'lucide-react';
 
+import { AgentSwarmView } from './AgentSwarmView';
+
 export function DashboardApp() {
   const { user, signOut } = useStore();
-  const [activeTab, setActiveTab] = useState<'leads' | 'sites' | 'pipeline' | 'team' | 'settings'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'sites' | 'pipeline' | 'swarm' | 'team' | 'settings'>('leads');
 
   const navItems = [
     { id: 'leads', label: 'Prospects & Leads', icon: Search },
     { id: 'sites', label: 'Generated Sites', icon: Globe },
     { id: 'pipeline', label: 'AI Pipeline', icon: Activity },
+    { id: 'swarm', label: 'Neural Swarm', icon: Bot },
     { id: 'team', label: 'Access & Roles', icon: ShieldCheck },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -30,7 +33,6 @@ export function DashboardApp() {
       </div>
     }>
       <div className="flex min-h-screen bg-slate-950">
-        {/* Sidebar - Premium Glassmorphism */}
         <aside className="w-64 sidebar-bg flex flex-col fixed h-screen z-50">
           <div className="p-8 pb-4">
             <div className="flex items-center gap-3 bg-gradient-to-br from-blue-400 to-blue-600 bg-clip-text text-transparent">
@@ -73,12 +75,12 @@ export function DashboardApp() {
           </div>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 ml-64 p-8 pl-12 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent">
           <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700">
             {activeTab === 'leads' && <LeadsManager />}
             {activeTab === 'sites' && <SitesManager />}
             {activeTab === 'pipeline' && <PipelineMonitor />}
+            {activeTab === 'swarm' && <AgentSwarmView />}
             {activeTab === 'team' && <TeamManager />}
             {activeTab === 'settings' && <div className="text-slate-500 italic p-12 text-center border-2 border-dashed border-slate-800 rounded-3xl">Ajustes de la factoría en desarrollo...</div>}
           </div>

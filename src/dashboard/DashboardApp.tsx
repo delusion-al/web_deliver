@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../utils/supabase';
 import { useStore } from '../templates/store';
 import { AdminGuard } from '../templates/AdminGuard';
 import { LeadsManager } from './LeadsManager';
@@ -13,11 +14,22 @@ import { AgentSwarmView } from './AgentSwarmView';
 export function DashboardApp() {
   const { user, signOut } = useStore();
   const [activeTab, setActiveTab] = useState<'leads' | 'sites' | 'pipeline' | 'swarm' | 'team' | 'settings'>('leads');
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPending = async () => {
+      const { count } = await supabase.from('swarm_approvals').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      setPendingCount(count || 0);
+    };
+    fetchPending();
+    const sub = supabase.channel('nav_badge').on('postgres_changes', { event: '*', schema: 'public', table: 'swarm_approvals' }, fetchPending).subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, []);
 
   const navItems = [
     { id: 'leads', label: 'Prospects & Leads', icon: Search },
     { id: 'sites', label: 'Generated Sites', icon: Globe },
-    { id: 'pipeline', label: 'AI Pipeline', icon: Activity },
+    { id: 'pipeline', label: 'AI Pipeline', icon: Activity, badge: pendingCount > 0 ? pendingCount : null },
     { id: 'swarm', label: 'Neural Swarm', icon: Bot },
     { id: 'team', label: 'Access & Roles', icon: ShieldCheck },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -47,14 +59,21 @@ export function DashboardApp() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all duration-200 group ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm transition-all duration-200 group ${
                   activeTab === item.id 
                   ? 'nav-item-active shadow-[0_0_15px_rgba(59,130,246,0.1)]' 
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 hover:translate-x-1'
                 }`}
               >
-                <item.icon size={18} className={activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <item.icon size={18} className={activeTab === item.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} />
+                  {item.label}
+                </div>
+                {item.badge && (
+                  <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.5)]">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>

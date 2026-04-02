@@ -5,39 +5,41 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Globe, Search, Loader2, Bot } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Play, Globe, Search, Loader2, Bot, Send } from 'lucide-react';
 
 export function LeadsManager() {
   const [leads, setLeads] = useState<any[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState('');
   const [type, setType] = useState('');
   const [isCrawling, setIsCrawling] = useState(false);
+  
+  // Swarm Dialog State
+  const [swarmTarget, setSwarmTarget] = useState<any>(null);
+  const [swarmTask, setSwarmTask] = useState('');
+  const [isSendingTask, setIsSendingTask] = useState(false);
 
-  const fetchLeads = async () => {
+  const fetchLeads = async (query?: string) => {
     setLoading(true);
-    const { data } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-    if (data) {
-      setLeads(data);
-      setFilteredLeads(data);
+    let request = supabase.from('leads').select('*').order('created_at', { ascending: false });
+    
+    if (query) {
+      request = request.or(`business_name.ilike.%${query}%,city.ilike.%${query}%,business_type.ilike.%${query}%`);
     }
+
+    const { data } = await request.limit( query ? 100 : 30);
+    if (data) setLeads(data);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchLeads();
-  }, []);
-
-  useEffect(() => {
-    const filtered = leads.filter(l => 
-      l.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.business_type?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredLeads(filtered);
-  }, [searchTerm, leads]);
+    const timer = setTimeout(() => {
+      fetchLeads(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleCrawl = async () => {
     if (!city || !type) return alert('Por favor introduce ciudad y tipo');
@@ -69,6 +71,31 @@ export function LeadsManager() {
     setIsCrawling(false);
   };
 
+  const handleSendSwarmTask = async () => {
+    if (!swarmTask || !swarmTarget) return;
+    setIsSendingTask(true);
+    try {
+      await supabase.from('swarm_approvals').insert({
+        tenant_id: swarmTarget.tenant_id,
+        proposed_changes: { task: swarmTask, source: 'Dashboard Manual' },
+        status: 'pending',
+        agent_id: 'gemma-4-local'
+      });
+      
+      await supabase.from('pipeline_logs').insert({
+        action: 'swarm_task_started',
+        metadata: { task: swarmTask, tenant_id: swarmTarget.tenant_id }
+      });
+
+      alert('Instrucción enviada al enjambre local. Revise "AI Pipeline" para la respuesta del agente.');
+      setSwarmTarget(null);
+      setSwarmTask('');
+    } catch (e: any) {
+      alert('Error enviando tarea: ' + e.message);
+    }
+    setIsSendingTask(false);
+  };
+
   const getStatusBadge = (hasWebsite: boolean) => {
     if (!hasWebsite) return <Badge variant="destructive" className="bg-orange-500/20 text-orange-400 border-orange-500/30">Sin Presencia (Prioridad)</Badge>;
     return <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/20">Presencia Detectada</Badge>;
@@ -77,13 +104,13 @@ export function LeadsManager() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
-           ORACLE: LEAD COMMAND
+        <h2 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-400 to-purple-600 drop-shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+           NEURAL FORGE: ORACLE COMMAND
         </h2>
         <div className="relative w-72">
            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 h-4 w-4" />
            <Input 
-             placeholder="Buscar en base de datos..." 
+             placeholder="Buscar en TODA la base de datos..." 
              className="pl-10 bg-slate-900/50 border-slate-800 text-xs"
              value={searchTerm}
              onChange={e => setSearchTerm(e.target.value)}
@@ -142,10 +169,10 @@ export function LeadsManager() {
                 <TableBody>
                   {loading ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-500 animate-pulse">Sincronizando con el Oráculo...</TableCell></TableRow>
-                  ) : filteredLeads.length === 0 ? (
+                  ) : leads.length === 0 ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-500">Sin señales detectadas en este parámetro.</TableCell></TableRow>
                   ) : (
-                    filteredLeads.map((lead, idx) => (
+                    leads.map((lead, idx) => (
                       <TableRow key={lead.id} className="border-slate-800/30 hover:bg-slate-800/10 transition-colors animate-in fade-in slide-in-from-left duration-300" style={{ animationDelay: `${idx * 50}ms` }}>
                         <TableCell className="p-6">
                           <div className="font-bold text-slate-200">{lead.business_name}</div>
@@ -180,7 +207,7 @@ export function LeadsManager() {
                                variant="outline" 
                                size="sm" 
                                className="bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 text-xs group"
-                               onClick={() => alert(`Sincronizando Swarm para ${lead.business_name}... Su enjambre NVIDIA/Gemma 4 analizará la petición de mantenimiento.`)}
+                               onClick={() => setSwarmTarget(lead)}
                              >
                                <Bot className="h-3 w-3 mr-1 group-hover:animate-bounce" /> Swarm Protocol
                              </Button>
@@ -196,6 +223,45 @@ export function LeadsManager() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Swarm Interactive Dialog */}
+      <Dialog open={!!swarmTarget} onOpenChange={() => setSwarmTarget(null)}>
+        <DialogContent className="bg-slate-950 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bot className="text-blue-400" /> Comando de Enjambre: {swarmTarget?.business_name}
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Escriba una instrucción para que los agentes locales (Gemma 4) ejecuten mantenimiento autónomo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+             <div className="space-y-2">
+                <label className="text-[10px] uppercase font-bold text-slate-500">Instrucción Neural</label>
+                <Input 
+                  placeholder="Ej: Cambia el color primario a violeta y añade sección de servicios..." 
+                  className="bg-black/50 border-slate-800 text-xs min-h-[80px]"
+                  value={swarmTask}
+                  onChange={e => setSwarmTask(e.target.value)}
+                />
+             </div>
+             <div className="bg-blue-500/5 border border-blue-500/10 p-3 rounded text-[10px] text-blue-400/80 font-mono">
+               DISPATCHER: Enrutando vía túnel NVIDIA/Localhost...
+             </div>
+          </div>
+          <DialogFooter>
+             <Button variant="ghost" onClick={() => setSwarmTarget(null)} className="text-xs">Cancelar</Button>
+             <Button 
+                onClick={handleSendSwarmTask} 
+                disabled={!swarmTask || isSendingTask}
+                className="bg-blue-600 hover:bg-blue-700 text-xs h-9 px-6"
+             >
+               {isSendingTask ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Send className="h-3 w-3 mr-2" />}
+               Desplegar Agentes
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

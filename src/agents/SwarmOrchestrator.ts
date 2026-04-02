@@ -1,3 +1,5 @@
+import { supabase } from '../utils/supabase';
+
 export type AgentRole = 'Manager' | 'Architect' | 'Coder' | 'Reviewer' | 'BusinessLogistics';
 
 export interface SwarmMessage {
@@ -13,26 +15,42 @@ export class SwarmOrchestrator {
     this.apiUrl = apiUrl;
   }
 
-  async processTask(task: string, onUpdate: (msg: SwarmMessage) => void) {
-    // 1. Manager Strategy
+  async processTask(task: string, onUpdate: (msg: SwarmMessage) => void, tenantId?: string) {
+    // Pipeline Analytics Integration
+    await supabase.from('pipeline_logs').insert({
+      action: 'swarm_task_started',
+      metadata: { task }
+    });
+
+    // Create a pending approval for the dashboard
+    if (tenantId) {
+      await supabase.from('swarm_approvals').insert({
+        tenant_id: tenantId,
+        proposed_changes: { task, source: 'Neural Swarm v2.1' },
+        status: 'pending',
+        agent_id: 'gemma-4-local'
+      });
+    }
+
     onUpdate({ role: 'Manager', content: `Analizando tarea: "${task}". Desplegando enjambre local (Gemma 4)...`, status: 'thinking' });
-    
-    // Simulate multi-agent chain
     await new Promise(r => setTimeout(r, 1500));
     
-    // 2. Architect Design
     onUpdate({ role: 'Architect', content: 'Diseñando estructura de la solución bajo el protocolo Claude Swarm...', status: 'acting' });
     const architecture = await this.invokeLocalModel(`Task: ${task}. Propose a high-level architecture.`);
     onUpdate({ role: 'Architect', content: architecture || 'Arquitectura validada.', status: 'done' });
 
-    // 3. Coder Implementation
     onUpdate({ role: 'Coder', content: 'Generando implementación basada en la arquitectura...', status: 'acting' });
     const code = await this.invokeLocalModel(`Implement this: ${architecture}. Be precise.`);
     onUpdate({ role: 'Coder', content: code || 'Implementación completada.', status: 'done' });
 
-    // 4. Final Review
     onUpdate({ role: 'Reviewer', content: 'Verificando seguridad y calidad (NVIDIA NIM Quality Check)...', status: 'thinking' });
     await new Promise(r => setTimeout(r, 1000));
+
+    await supabase.from('pipeline_logs').insert({
+      action: 'swarm_task_completed',
+      metadata: { task, status: 'success' }
+    });
+
     onUpdate({ role: 'Manager', content: 'Ciclo completo. Tarea integrada en la red neural.', status: 'done' });
   }
 

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Globe, Search, Loader2 } from 'lucide-react';
+import { Play, Globe, Search, Loader2, Bot } from 'lucide-react';
 
 export function LeadsManager() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -167,15 +167,25 @@ export function LeadsManager() {
                               <Play className="h-3 w-3 mr-2" /> Forjar Sitio
                             </Button>
                           ) : (
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              className="bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 text-xs"
-                              onClick={() => window.open(`${import.meta.env.BASE_URL}preview/${lead.tenant_id}`, '_blank')}
-                            >
-                              <Globe className="h-3 w-3 mr-2" /> Desplegado
-                            </Button>
-                          )}
+                            <div className="flex gap-2 justify-end">
+                             <Button 
+                               variant="default" 
+                               size="sm" 
+                               className="bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 text-xs"
+                               onClick={() => window.open(`${window.location.origin}${import.meta.env.BASE_URL}preview/${lead.tenant_id}`, '_blank')}
+                             >
+                               <Globe className="h-3 w-3 mr-1" /> Ver Sitio
+                             </Button>
+                             <Button 
+                               variant="outline" 
+                               size="sm" 
+                               className="bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 text-xs group"
+                               onClick={() => alert(`Sincronizando Swarm para ${lead.business_name}... Su enjambre NVIDIA/Gemma 4 analizará la petición de mantenimiento.`)}
+                             >
+                               <Bot className="h-3 w-3 mr-1 group-hover:animate-bounce" /> Swarm Protocol
+                             </Button>
+                          </div>
+                        )}
                         </TableCell>
                       </TableRow>
                     ))

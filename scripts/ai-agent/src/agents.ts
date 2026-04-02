@@ -17,11 +17,17 @@ export function createMaintenanceTeam() {
         description: 'Writes the code based on the Planner\'s instructions and validates it.',
         systemPrompt: 'You are an Expert TypeScript Developer. You implement the schema changes requested by the Planner. You must update tenantConfig.ts accurately without breaking syntax. Once changed, attempt to run the astro check build.',
         tools: [readConfigTool, updateConfigTool, runAstroCheckTool],
+      },
+      {
+        name: 'Reviewer',
+        description: 'Verifies code quality and security after developer modifications.',
+        systemPrompt: 'You are the Quality Assurance lead. Review the Developer\'s changes to ensure they match the Planner\'s intent. If there are syntax errors or logic gaps, reject the work and send it back to the Developer.',
+        tools: [readConfigTool, runAstroCheckTool]
       }
     ],
     // The coordinator uses its internal topological task engine
     // to map execution automatically.
-    maxIterations: 10,
+    maxIterations: 15,
   });
 
   return team;

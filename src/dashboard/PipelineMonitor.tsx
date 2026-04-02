@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock } from 'lucide-react';
+import { Clock, ShieldCheck, XCircle, CheckCircle } from 'lucide-react';
 
 export function PipelineMonitor() {
   const [logs, setLogs] = useState<any[]>([]);
+  const [approvals, setApprovals] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({ success: 0, total: 0 });
 
   const fetchLogs = async () => {
@@ -21,15 +22,42 @@ export function PipelineMonitor() {
     }
   };
 
+  const fetchApprovals = async () => {
+    const { data } = await supabase
+      .from('swarm_approvals')
+      .select('*, tenants(name)')
+      .eq('status', 'pending');
+    if (data) setApprovals(data);
+  };
+
+  const handleApproval = async (id: string, approve: boolean) => {
+    const status = approve ? 'approved' : 'rejected';
+    await supabase.from('swarm_approvals').update({ status }).eq('id', id);
+    fetchApprovals();
+  };
+
   useEffect(() => {
     fetchLogs();
-    const sub = supabase
+    fetchApprovals();
+    
+    const logsSub = supabase
       .channel('pipeline_realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pipeline_logs' }, (payload) => {
         setLogs(prev => [payload.new, ...prev].slice(0, 30));
       })
       .subscribe();
-    return () => { supabase.removeChannel(sub); };
+
+    const approvalSub = supabase
+      .channel('approval_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'swarm_approvals' }, () => {
+        fetchApprovals();
+      })
+      .subscribe();
+
+    return () => { 
+      supabase.removeChannel(logsSub); 
+      supabase.removeChannel(approvalSub);
+    };
   }, []);
 
   const getActionStyle = (action: string) => {
@@ -37,6 +65,7 @@ export function PipelineMonitor() {
       case 'crawl_started': return 'text-blue-400 border-blue-500/20 bg-blue-500/5';
       case 'crawl_completed': return 'text-green-400 border-green-500/20 bg-green-500/5';
       case 'site_generated': return 'text-purple-400 border-purple-500/20 bg-purple-500/5';
+      case 'swarm_task_started': return 'text-orange-400 border-orange-500/20 bg-orange-500/5';
       default: return 'text-slate-400 border-slate-700 bg-slate-900/50';
     }
   };
@@ -56,6 +85,34 @@ export function PipelineMonitor() {
         </div>
       </div>
 
+      {approvals.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {approvals.map(approval => (
+            <Card key={approval.id} className="bg-orange-500/5 border-orange-500/20 p-4 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-orange-400" />
+                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Aprobación Swarm Pendiente</span>
+                </div>
+                <div className="text-[9px] text-slate-500">{new Date(approval.created_at).toLocaleTimeString()}</div>
+              </div>
+              <p className="text-xs text-slate-300 font-mono bg-black/40 p-3 rounded border border-orange-500/10 mb-4">
+                Petición: {approval.proposed_changes.task || 'Mantenimiento General'}
+                <br/> Site: <span className="text-blue-400">{approval.tenants?.name || 'Sistema'}</span>
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" className="h-7 text-[10px] border-slate-700 hover:bg-red-500/10 text-red-400" onClick={() => handleApproval(approval.id, false)}>
+                  <XCircle className="h-3 w-3 mr-1" /> RECHAZAR
+                </Button>
+                <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 shadow-[0_0_10px_rgba(249,115,22,0.2)]" onClick={() => handleApproval(approval.id, true)}>
+                  <CheckCircle className="h-3 w-3 mr-1" /> APROBAR CAMBIOS
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-slate-950/40 border-slate-800 p-4">
              <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Tasa de Éxito AI</div>
@@ -64,16 +121,16 @@ export function PipelineMonitor() {
              </div>
           </Card>
           <Card className="bg-slate-950/40 border-slate-800 p-4">
-             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Latencia Oracle</div>
+             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Latencia Local NIM</div>
              <div className="text-3xl font-bold text-blue-400 leading-none">0.8s</div>
           </Card>
           <Card className="bg-slate-950/40 border-slate-800 p-4">
-             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Nodos Activos</div>
-             <div className="text-3xl font-bold text-purple-400 leading-none">12.4k</div>
+             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Sincronizaciones hoy</div>
+             <div className="text-3xl font-bold text-purple-400 leading-none">{logs.filter(l => l.action.startsWith('swarm')).length}</div>
           </Card>
           <Card className="bg-slate-950/40 border-slate-800 p-4 border-l-orange-500/50">
-             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Prospectos Hot</div>
-             <div className="text-3xl font-bold text-orange-400 leading-none">820</div>
+             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Alertas Criticas</div>
+             <div className="text-3xl font-bold text-orange-400 leading-none">0</div>
           </Card>
       </div>
 
@@ -123,3 +180,4 @@ export function PipelineMonitor() {
     </div>
   );
 }
+

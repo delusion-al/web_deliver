@@ -548,30 +548,51 @@ export class SupabaseAdapter implements AuthPort, MarketPort, EventPort, SystemL
 
     if (tError) throw tError;
 
-    // 4. Create Initial Config (The skeleton for the AI to later refine)
+    // 4. Create Initial Config (PREMIUM FORGE V2.0)
     const initialConfig = {
       tenant_id: tenant.id,
       brand: {
-        colors: { primary: '#3b82f6', secondary: '#1e293b' },
-        logo_text: lead.business_name
+        colors: { 
+          primary: '#3b82f6', 
+          secondary: '#0f172a',
+          accent: '#8b5cf6' 
+        },
+        logo_text: lead.business_name,
+        font: 'Inter'
       },
       seo: {
         title: `${lead.business_name} - ${lead.business_type} en ${lead.city}`,
-        description: `Bienvenido a ${lead.business_name}. Expertos en ${lead.business_type} ubicados en ${lead.city}.`
+        description: `Bienvenido a ${lead.business_name}. Expertos en ${lead.business_type} ubicados en ${lead.city}. Calidad y confianza garantizada.`
       },
       navbar: [
         { label: 'Inicio', href: '#inicio' },
         { label: 'Servicios', href: '#servicios' },
+        { label: 'Tarifas', href: '#pricing' },
         { label: 'Contacto', href: '#contacto' }
       ],
       pages: [
         {
           id: 'home',
-          layout: 'modern',
+          layout: 'glassmorphism',
+          hero: {
+            title: lead.business_name,
+            subtitle: `Tu experto local en ${lead.business_type} en ${lead.city}`,
+            button_text: 'Reservar Cita'
+          },
           features: [
-            { icon: 'star', title: 'Atención Exclusiva', desc: `Tu mejor elección en ${lead.city}` },
-            { icon: 'tool', title: lead.business_type, desc: `Ofrecemos los mejores servicios de ${lead.business_type}` }
-          ]
+            { icon: 'Zap', title: 'Atención Express', desc: `Priorizamos tu tiempo en ${lead.city}.` },
+            { icon: 'Shield', title: 'Garantía Neural', desc: `Seguridad y precisión en cada servicio de ${lead.business_type}.` },
+            { icon: 'Star', title: 'Calidad Premium', desc: 'Acabados y atención al detalle de alto nivel.' }
+          ],
+          pricing: [
+            { name: 'Básico', price: 'Económico', features: ['Servicio estándar', 'Garantía 30 días'] },
+            { name: 'Premium', price: 'Recomendado', features: ['Prioridad máxima', 'Atención 24/7', 'Garantía extendida'] }
+          ],
+          contact: {
+            address: lead.address || lead.city,
+            phone: lead.phone || 'Pendiente de activar',
+            email: lead.outreach_email || 'info@' + domainName
+          }
         }
       ]
     };

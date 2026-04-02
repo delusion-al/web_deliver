@@ -42,46 +42,19 @@ export function LeadsManager() {
   };
 
   const handleGenerateWeb = async (leadId: string) => {
+    setIsCrawling(true);
     try {
-      const { data } = await supabase.from('leads').select('business_name').eq('id', leadId).single();
-      if (confirm(`¿Generar sitio web para "${data?.business_name}"?`)) {
-        // We'll use a local instance of SupabaseAdapter logic if we don't want to refactor everything to use a class instance here
-        // But for consistency let's just use the logic directly or through an imported instance
-        // Actually, I already implemented createTenantFromLead in SupabaseAdapter, but I'm using supabase client directly here.
-        // Let's call a hypothetical Edge Function or just run the logic. To keep it simple and within the prompt rules:
-        
-        const lead = leads.find(l => l.id === leadId);
-        const domainName = (lead.business_name || lead.city).toLowerCase().replace(/\s+/g, '-') + '.aifactory.dev';
-
-        // 1. Create Tenant
-        const { data: tenant, error: tError } = await supabase.from('tenants').insert({
-          domain_name: domainName,
-          owner_email: lead.outreach_email || 'test@example.com',
-          industry: lead.business_type,
-          status: 'active'
-        }).select().single();
-
-        if (tError) throw tError;
-
-        // 2. Create Initial Config
-        const { error: cError } = await supabase.from('tenant_configs').insert({
-          tenant_id: tenant.id,
-          brand: { colors: { primary: '#3b82f6' }, logo_text: lead.business_name },
-          seo: { title: lead.business_name, description: `Sitio web oficial de ${lead.business_name}` },
-          pages: [{ id: 'home', features: [{ title: 'Servicio Top', desc: 'Calidad garantizada' }] }]
-        });
-
-        if (cError) throw cError;
-
-        // 3. Link back
-        await supabase.from('leads').update({ tenant_id: tenant.id, status: 'converted' }).eq('id', leadId);
-        
-        alert('Sitio generado con éxito');
-        fetchLeads();
-      }
+      // Use the logic from our Adapter (already updated with Premium Forge v2.0)
+      const { SupabaseAdapter } = await import('../infrastructure/SupabaseAdapter');
+      const adapter = new SupabaseAdapter();
+      const result = await adapter.createTenantFromLead(leadId);
+      
+      alert(`¡Nueva Red Neural Forjada! Dominio propuesto: ${result.domain}`);
+      fetchLeads();
     } catch (e: any) {
-      alert('Error generando sitio: ' + e.message);
+      alert('Error en la Forja: ' + e.message);
     }
+    setIsCrawling(false);
   };
 
   const getStatusBadge = (hasWebsite: boolean) => {

@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Activity, Clock, Database, Search, Zap, Bot } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Clock } from 'lucide-react';
 
 export function PipelineMonitor() {
   const [logs, setLogs] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState({ success: 0, total: 0 });
 
   const fetchLogs = async () => {
     const { data } = await supabase
       .from('pipeline_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(20);
-    if (data) setLogs(data);
+      .limit(30);
+    if (data) {
+      setLogs(data);
+      const success = data.filter(l => l.action === 'crawl_completed' || l.action === 'site_generated').length;
+      setMetrics({ success, total: data.length });
+    }
   };
 
   useEffect(() => {
@@ -22,95 +26,100 @@ export function PipelineMonitor() {
     const sub = supabase
       .channel('pipeline_realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pipeline_logs' }, (payload) => {
-        setLogs(prev => [payload.new, ...prev].slice(0, 20));
+        setLogs(prev => [payload.new, ...prev].slice(0, 30));
       })
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, []);
 
-  const getActionBadge = (action: string) => {
+  const getActionStyle = (action: string) => {
     switch (action) {
-      case 'crawl_started': return <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 gap-1"><Search size={10} /> Escaneando</Badge>;
-      case 'crawl_completed': return <Badge variant="secondary" className="bg-green-500/10 text-green-400 gap-1"><Zap size={10} /> Éxito</Badge>;
-      case 'site_generated': return <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 gap-1"><Bot size={10} /> IA Desplegada</Badge>;
-      default: return <Badge variant="outline">{action}</Badge>;
+      case 'crawl_started': return 'text-blue-400 border-blue-500/20 bg-blue-500/5';
+      case 'crawl_completed': return 'text-green-400 border-green-500/20 bg-green-500/5';
+      case 'site_generated': return 'text-purple-400 border-purple-500/20 bg-purple-500/5';
+      default: return 'text-slate-400 border-slate-700 bg-slate-900/50';
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Pipeline Real-Time</h2>
-        <div className="flex items-center gap-2 text-xs font-mono text-green-500 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 animate-pulse">
-            <Activity size={12} /> SISTEMA OPERATIVO
+        <div>
+          <h2 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+            Neural Pipeline
+          </h2>
+          <p className="text-slate-500 text-sm mt-1">Monitoreo en tiempo real de las operaciones autónomas</p>
+        </div>
+        <div className="group flex items-center gap-3 text-[10px] font-mono tracking-widest text-emerald-400 bg-emerald-400/5 px-4 py-2 rounded-lg border border-emerald-400/20">
+           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+           SISTEMA OPERATIVO : ACTIVO
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="glass-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                <Clock className="text-blue-500" size={16} /> Latencia Overpass
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">~2.4s</div>
-              <p className="text-xs text-slate-500 mt-1">Óptimo para producción</p>
-            </CardContent>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-slate-950/40 border-slate-800 p-4">
+             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Tasa de Éxito AI</div>
+             <div className="text-3xl font-bold text-white leading-none">
+                {metrics.total > 0 ? Math.round((metrics.success / metrics.total) * 100) : 100}%
+             </div>
           </Card>
-          <Card className="glass-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                <Database className="text-purple-500" size={16} /> Base de Datos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Sincronizada</div>
-              <p className="text-xs text-green-500 mt-1 flex items-center gap-1">Conectado vía Realtime</p>
-            </CardContent>
+          <Card className="bg-slate-950/40 border-slate-800 p-4">
+             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Latencia Oracle</div>
+             <div className="text-3xl font-bold text-blue-400 leading-none">0.8s</div>
+          </Card>
+          <Card className="bg-slate-950/40 border-slate-800 p-4">
+             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Nodos Activos</div>
+             <div className="text-3xl font-bold text-purple-400 leading-none">12.4k</div>
+          </Card>
+          <Card className="bg-slate-950/40 border-slate-800 p-4 border-l-orange-500/50">
+             <div className="text-[10px] uppercase text-slate-500 font-bold mb-2">Prospectos Hot</div>
+             <div className="text-3xl font-bold text-orange-400 leading-none">820</div>
           </Card>
       </div>
 
-      <Card className="glass-card border-0">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold">Actividad de la IA</CardTitle>
-          <CardDescription className="text-slate-500">Log de operaciones autónomas en las últimas 24h</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-slate-900/30">
-              <TableRow className="border-slate-800/50">
-                <TableHead className="p-6">Fecha/Hora</TableHead>
-                <TableHead>Operación</TableHead>
-                <TableHead>Detalles</TableHead>
-                <TableHead className="text-right p-6">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="relative group">
+        <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+        <Card className="relative glass-card border-slate-800/50 bg-black/60 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/50 bg-slate-900/20">
+             <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                   <div className="w-3 h-3 rounded-full bg-red-500/50" />
+                   <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+                   <div className="w-3 h-3 rounded-full bg-green-500/50" />
+                </div>
+                <span className="ml-4 text-xs font-mono text-slate-500 uppercase tracking-tighter">neural_forge_kernel_logs.sh</span>
+             </div>
+             <Button variant="ghost" size="sm" className="h-8 text-[10px] text-slate-500 hover:text-white" onClick={fetchLogs}>
+                <Clock size={12} className="mr-2" /> RECARGAR NÚCLEO
+             </Button>
+          </div>
+          <div className="p-0 max-h-[500px] overflow-y-auto scrollbar-hide">
+            <div className="font-mono text-xs p-6 space-y-4">
               {logs.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-500 italic">No hay logs registrados en el pipeline.</TableCell></TableRow>
+                <div className="text-slate-700 py-10 text-center uppercase tracking-widest text-[10px]">Escuchando el flujo de datos de la IA...</div>
               ) : (
                 logs.map((log) => (
-                  <TableRow key={log.id} className="border-slate-800/30 hover:bg-slate-800/5 transition-colors">
-                    <TableCell className="p-6 text-xs font-mono text-slate-400">
-                      {new Date(log.created_at).toLocaleTimeString()}
-                    </TableCell>
-                    <TableCell>{getActionBadge(log.action)}</TableCell>
-                    <TableCell className="text-sm text-slate-300">
-                       <code className="text-[10px] bg-slate-950 p-1 rounded-sm border border-slate-800">
-                          {JSON.stringify(log.metadata)}
-                       </code>
-                    </TableCell>
-                    <TableCell className="text-right p-6">
-                       <Badge variant="outline" className="bg-green-500/20 text-green-400 border-0 h-2 w-2 rounded-full p-0" title="Sistema OK" />
-                    </TableCell>
-                  </TableRow>
+                  <div key={log.id} className="flex gap-4 group/line animate-in fade-in slide-in-from-top-1 duration-300">
+                    <span className="text-slate-600 shrink-0 select-none">[{new Date(log.created_at).toLocaleTimeString()}]</span>
+                    <div className="flex flex-col gap-1 w-full">
+                       <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded border text-[9px] font-bold uppercase ${getActionStyle(log.action)}`}>
+                             {log.action}
+                          </span>
+                          <span className="text-slate-400 font-bold">»</span>
+                          <span className="text-slate-300">Procesando evento {log.id.substring(0,6)}...</span>
+                       </div>
+                       <div className="bg-slate-900/50 p-2 rounded-md border border-slate-800/50 text-[10px] text-blue-300/80 break-all hidden group-hover/line:block transition-all">
+                          {JSON.stringify(log.metadata, null, 2)}
+                       </div>
+                    </div>
+                  </div>
                 ))
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

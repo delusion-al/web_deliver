@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useStore } from '../templates/store';
 
@@ -36,7 +36,7 @@ function App() {
   }, [initAuth]);
 
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <Router>
       <Routes>
         {/* Core AI Factory Gates */}
         <Route path="/" element={<Gateway />} />
@@ -60,7 +60,7 @@ function App() {
         {/* Catch-all to Gateway */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 

@@ -95,7 +95,7 @@ export function SitesManager() {
                           size="icon" 
                           className="h-8 w-8 border-slate-700 hover:text-blue-400"
                           title="Previsualizar"
-                          onClick={() => window.open(`${import.meta.env.BASE_URL}preview/${t.id}`, '_blank')}
+                          onClick={() => window.open(`${import.meta.env.BASE_URL}#/preview/${t.id}`, '_blank')}
                         >
                           <ExternalLink size={14} />
                         </Button>

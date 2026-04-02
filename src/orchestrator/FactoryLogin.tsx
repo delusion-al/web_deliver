@@ -21,7 +21,7 @@ export function FactoryLogin() {
       await signIn(email, password);
       // initAuth might need to be called if signIn doesn't trigger a store refresh
       // but usually the store update is enough.
-      window.location.href = import.meta.env.BASE_URL + 'admin';
+      window.location.href = import.meta.env.BASE_URL + '#/admin';
     } catch (err: any) {
       setError('Credenciales incorrectas. Verifica tus datos de acceso.');
       setLoading(false);

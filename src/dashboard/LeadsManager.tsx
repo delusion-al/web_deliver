@@ -199,7 +199,7 @@ export function LeadsManager() {
                                variant="default" 
                                size="sm" 
                                className="bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 text-xs"
-                               onClick={() => window.open(`${window.location.origin}${import.meta.env.BASE_URL}preview/${lead.tenant_id}`, '_blank')}
+                               onClick={() => window.open(`${window.location.origin}${import.meta.env.BASE_URL}#/preview/${lead.tenant_id}`, '_blank')}
                              >
                                <Globe className="h-3 w-3 mr-1" /> Ver Sitio
                              </Button>

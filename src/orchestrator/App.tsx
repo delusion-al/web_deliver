@@ -22,7 +22,9 @@ function Gateway() {
   );
 
   // If God Admin, go to Factory Controller
-  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  const devEmails = ['migueldev97@gmail.com', 'miguelperez98@gmail.com', 'migue@urosderivas.com'];
+  const isAdmin = user?.role === 'admin' || (user?.email && devEmails.includes(user.email.toLowerCase()));
+  if (isAdmin) return <Navigate to="/admin" replace />;
   
   // If not logged in, show the Factory Portal
   return <FactoryPortal />;
@@ -47,7 +49,12 @@ function App() {
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
               <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Verificando Credenciales...</div>
             </div>
-          ) : user?.role === 'admin' ? <DashboardApp /> : <Navigate to="/login" replace />
+          ) : (() => {
+             // FORCED FAILSAFE: Verify by email if role check fails
+             const devEmails = ['migueldev97@gmail.com', 'miguelperez98@gmail.com', 'migue@urosderivas.com'];
+             const isAdmin = user?.role === 'admin' || (user?.email && devEmails.includes(user.email.toLowerCase()));
+             return isAdmin ? <DashboardApp /> : <Navigate to="/login" replace />;
+          })()
         } />
 
         {/* Global Factory Login */}

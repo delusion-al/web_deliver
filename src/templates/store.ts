@@ -10,7 +10,7 @@ interface AppState {
   events: Event[];
   loading: boolean;
   cart: CartItem[];
-  
+
   // Actions
   initAuth: () => Promise<void>;
   signIn: (email: string, pass: string) => Promise<void>;
@@ -40,11 +40,23 @@ export const useStore = create<AppState>()((set) => ({
     try {
       const user = await adapter.getUser();
       
-      // Temporary God-Mode Bypass for the main developer
-      const developerEmails = ['migueldev97@gmail.com', 'miguelperez98@gmail.com', 'migue@urosderivas.com'];
-      if (user && developerEmails.includes(user.email)) {
-        user.role = 'admin';
+      // UNIVERSAL ADMIN BYPASS (FOOLPROOF V3)
+      const developerEmails = [
+        'migueldev97@gmail.com', 
+        'miguelperez98@gmail.com', 
+        'migue@urosderivas.com'
+      ];
+      
+      if (user && user.email) {
+        const userEmail = user.email.toLowerCase();
+        if (developerEmails.includes(userEmail)) {
+           user.role = 'admin';
+        }
       }
+
+      // EXPOSE TO CONSOLE FOR THE DEVELOPER
+      (window as any).USER_STATE = { user, loading: false };
+      console.log('AI FACTORY AUTH SYNCED:', user?.email, user?.role);
 
       set({ user, loading: false });
     } catch (e) {
@@ -58,7 +70,7 @@ export const useStore = create<AppState>()((set) => ({
     
     // Developer God-Mode Bypass
     const developerEmails = ['migueldev97@gmail.com', 'miguelperez98@gmail.com', 'migue@urosderivas.com'];
-    if (user && developerEmails.includes(user.email)) {
+    if (user && user.email && developerEmails.includes(user.email.toLowerCase())) {
       user.role = 'admin';
     }
 
@@ -83,7 +95,7 @@ export const useStore = create<AppState>()((set) => ({
     try {
       const items = await adapter.getItems();
       set({ items, loading: false });
-    } catch(e) {
+    } catch (e) {
       console.error(e);
       set({ loading: false });
     }
@@ -94,7 +106,7 @@ export const useStore = create<AppState>()((set) => ({
     try {
       const events = await adapter.getEvents();
       set({ events, loading: false });
-    } catch(e) {
+    } catch (e) {
       console.error(e);
       set({ loading: false });
     }
@@ -119,11 +131,11 @@ export const useStore = create<AppState>()((set) => ({
       return { cart: [...state.cart, item] };
     });
   },
-  
+
   removeFromCart: (cartItemId) => set(state => ({ cart: state.cart.filter(c => c.cartItemId !== cartItemId) })),
-  
+
   clearCart: () => set({ cart: [] }),
-  
+
   updateCartQuantity: (cartItemId, quantity) => set(state => ({
     cart: state.cart.map(c => c.cartItemId === cartItemId ? { ...c, quantity } : c)
   }))

@@ -18,7 +18,13 @@ async function runSwarmWorker() {
   console.log('Check Env: GITHUB_TOKEN starting with:', process.env.VITE_GITHUB_TOKEN?.substring(0, 10) || 'MISSING');
   console.log('Listening for neural signals (tickets/approvals)...');
 
+  // 0. RESET STUCK TASKS (Self-Heal on Startup)
+  console.log('[BOOT] Resetting stuck neural tasks...');
+  await supabase.from('maintenance_tickets').update({ status: 'pending' }).eq('status', 'processing');
+  await supabase.from('swarm_approvals').update({ status: 'pending' }).eq('status', 'processing');
+
   // 1. Listen for new Maintenance Tickets
+
   const ticketChannel = supabase
     .channel('maintenance_worker')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'maintenance_tickets' }, async (payload) => {
@@ -115,7 +121,34 @@ async function runSwarmWorker() {
   pollPendingTasks();
   setInterval(pollPendingTasks, 15000);
 
+  // 4. NEURAL LOOP (Periodic Fleet Audit)
+  async function runNeuralAuditor() {
+    console.log('[AUDITOR] Scanning fleet for structural integrity...');
+    const { data: tenants } = await supabase.from('tenants').select('id, domain_name');
+    if (!tenants) return;
+
+    for (const t of tenants) {
+      // Trigger a light audit if no recent ticket exists
+      const { count } = await supabase.from('maintenance_tickets').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'pending');
+      
+      if (count === 0) {
+        console.log(`[AUDITOR] Triggering refinement cycle for: ${t.domain_name} (${t.id})...`);
+        await supabase.from('maintenance_tickets').insert({
+          tenant_id: t.id,
+          subject: 'Neural Integrity & Premium UI Audit',
+          description: 'Factory-triggered audit to ensure modern and premium design implementation using latest template library.',
+          status: 'pending'
+        });
+      }
+    }
+  }
+
+  // Run auditor every 1 hour (simulated shorter for demo if needed)
+  runNeuralAuditor();
+  setInterval(runNeuralAuditor, 3600000); 
+
   console.log('[DEBUG] Testing DB connection...');
+
   const { data: dbTest, count } = await supabase.from('tenants').select('count', { count: 'exact', head: true });
   console.log(`[DEBUG] DB connection successful. Tenants count: ${count || 0}`);
 

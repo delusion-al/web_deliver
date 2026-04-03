@@ -29,6 +29,8 @@ function Gateway() {
   return <FactoryPortal />;
 }
 
+import { Toaster } from 'sonner';
+
 function App() {
   const { initAuth, user, loading } = useStore();
 
@@ -37,44 +39,48 @@ function App() {
   }, [initAuth]);
 
   return (
-    <Router>
-      <Routes>
-        {/* Core AI Factory Gates */}
-        <Route path="/" element={<Gateway />} />
+    <>
+      <Toaster position="top-right" theme="dark" richColors expand={false} />
+      <Router>
+        <Routes>
+          {/* Core AI Factory Gates */}
+          <Route path="/" element={<Gateway />} />
 
-        {/* Premium Admin Routing */}
-        <Route path="/admin/*" element={
-          loading ? (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-              <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Verificando Credenciales...</div>
-            </div>
-          ) : (() => {
-            // FORCED FAILSAFE: Verify by email if role check fails
-            const isAdmin = user?.role === 'admin' || (user?.email && user.email.toLowerCase() === 'migueldev97@gmail.com');
-            return isAdmin ? <DashboardApp /> : <Navigate to="/login" replace />;
-          })()
-        } />
+          {/* Premium Admin Routing */}
+          <Route path="/admin/*" element={
+            loading ? (
+              <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Verificando Credenciales...</div>
+              </div>
+            ) : (() => {
+              // FORCED FAILSAFE: Verify by email if role check fails
+              const isAdmin = user?.role === 'admin' || (user?.email && user.email.toLowerCase() === 'migueldev97@gmail.com');
+              return isAdmin ? <DashboardApp /> : <Navigate to="/login" replace />;
+            })()
+          } />
 
-        {/* Global Factory Login */}
-        <Route path="/login" element={<FactoryLogin />} />
+          {/* Global Factory Login */}
+          <Route path="/login" element={<FactoryLogin />} />
 
-        {/* Client-Specific Hubs (Tenant Management) */}
-        <Route path="/client/:tenantId/*" element={
-          loading ? (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-              <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Sincronizando Acceso...</div>
-            </div>
-          ) : user ? <ClientDashboardApp /> : <Navigate to="/login" replace />
-        } />
+          {/* Client-Specific Hubs (Tenant Management) */}
+          <Route path="/client/:tenantId/*" element={
+            loading ? (
+              <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="text-blue-500 animate-pulse font-mono tracking-widest text-sm uppercase">Sincronizando Acceso...</div>
+              </div>
+            ) : user ? <ClientDashboardApp /> : <Navigate to="/login" replace />
+          } />
 
-        {/* Dynamic Previews (The "Forged" Site Engine) */}
-        <Route path="/preview/:tenantId" element={<Preview />} />
+          {/* Dynamic Previews (The "Forged" Site Engine) */}
+          <Route path="/preview/:tenantId" element={<Preview />} />
 
-        {/* Catch-all to Gateway */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+          {/* Catch-all to Gateway */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </>
   );
 }
+
 
 export default App;

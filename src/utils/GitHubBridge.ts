@@ -64,22 +64,74 @@ export class GitHubBridge {
         sha: configSha,
       });
 
-      // 2. Ensure package.json exists (Base template check)
-      try {
-         await this.octokit.repos.getContent({ owner: repoOwner, repo: repoName, path: packagePath });
-      } catch (e) {
-         // Missing package.json -> BOOTSTRAP WHOLE REPO TEMPLATE
-         const basePackage = {
-            name: repoName,
-            type: "module",
-            scripts: { "dev": "astro dev", "start": "astro dev", "build": "astro build", "preview": "astro preview" },
-            dependencies: { "astro": "^4.0.0", "react": "^18.0.0", "react-dom": "^18.0.0" }
-         };
-         await this.octokit.repos.createOrUpdateFileContents({
-            owner: repoOwner, repo: repoName, path: packagePath, message: '🤖 Neural Swarm: Bootstrapping Node Package',
-            content: Buffer.from(JSON.stringify(basePackage, null, 2)).toString('base64'),
-         });
+      // 2. Ensure Core Build Configuration (Auto-Repair)
+      const coreFiles = [
+        { path: 'astro.config.mjs', content: `
+import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
+import tailwind from '@astrojs/tailwind';
+
+export default defineConfig({
+  integrations: [react(), tailwind()],
+  output: 'static'
+});`.trim() },
+        { path: 'tailwind.config.mjs', content: `
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
+  theme: {
+    extend: {
+      colors: {
+        glass: 'rgba(255, 255, 255, 0.03)',
       }
+    },
+  },
+  plugins: [],
+  darkMode: 'class',
+};`.trim() },
+        { path: 'tsconfig.json', content: `
+{
+  "extends": "astro/tsconfigs/strictest",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  }
+}`.trim() }
+      ];
+
+      for (const file of coreFiles) {
+        try {
+          await this.octokit.repos.getContent({ owner: repoOwner, repo: repoName, path: file.path });
+        } catch (e) {
+          // File missing -> AUTO-REPAIR
+          console.log(`[GitHubBridge] Auto-repairing missing ${file.path} in ${repoName}...`);
+          await this.modifyRepoFile(repoFullName, file.path, file.content, `🤖 Neural Swarm: Auto-Repairing ${file.path}`);
+        }
+      }
+
+      // Upgrade Package dependencies if necessary
+      try {
+        const { data: pkgData }: any = await this.octokit.repos.getContent({ owner: repoOwner, repo: repoName, path: packagePath });
+        const currentPkg = JSON.parse(Buffer.from(pkgData.content, 'base64').toString('utf-8'));
+        if (!currentPkg.dependencies?.['@astrojs/tailwind']) {
+          console.log(`[GitHubBridge] Upgrading dependencies for ${repoName} to Elite...`);
+          currentPkg.dependencies = {
+            ...currentPkg.dependencies,
+            "@astrojs/react": "^3.0.0",
+            "@astrojs/tailwind": "^5.1.0",
+            "tailwindcss": "^3.4.1",
+            "lucide-react": "^0.344.0",
+            "clsx": "^2.1.0",
+            "tailwind-merge": "^2.2.1"
+          };
+          await this.modifyRepoFile(repoFullName, packagePath, JSON.stringify(currentPkg, null, 2), '🤖 Neural Swarm: Upgrading to Elite Engine (v7.4)');
+        }
+      } catch (e) {}
+
 
       // 3. BOOTSTRAP CI/CD
       try {
@@ -151,16 +203,38 @@ jobs:
 interface Props { title: string; }
 const { title } = Astro.props;
 import config from '../data/config.json';
-const brand = config.brand || {};
+const brand = config.brand || { colors: { primary: '#3b82f6' } };
+const { colors } = brand;
 ---
 <!doctype html>
-<html lang="es" class="dark bg-slate-950 text-white font-sans">
+<html lang="es" class="dark bg-slate-950 text-white font-sans selection:bg-blue-500/30">
   <head>
-    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><title>{title}</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <style is:global>
+      :root {
+        --accent: \${colors.primary};
+      }
+      body {
+        margin: 0;
+        width: 100%;
+        min-height: 100vh;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+    </style>
   </head>
-  <body><slot /></body>
+  <body class="antialiased overflow-x-hidden">
+    <slot />
+  </body>
 </html>
-`.trim(), '🤖 Neural Swarm: Bootstrapping Global Layout');
+`.trim(), '🤖 Neural Swarm: Bootstrapping Global Elite Layout');
 
         await this.modifyRepoFile(repoFullName, 'src/pages/index.astro', `
 ---

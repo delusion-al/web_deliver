@@ -125,44 +125,58 @@ export class SwarmOrchestrator {
       await logStep('Manager', `Analizando arquitectura actual para ${domainName}. Consultando fuentes cognitivas...`, 'thinking');
       const analysis = await this.invokeModel('gemma:7b', `Analyze this request for optimizing the website structure for ${domainName}. Task: ${task}. Focus on UX/SEO and specialize for their niche.`, tenantId);
 
+      // Dynamic Industry Specialization based on Domain
+      const industrySkills: Record<string, string> = {
+        'reformas': 'Expert in Construction, Luxury Architecture, and Renovation UI. Focus on Before/After galleries and Trust-building bento grids.',
+        'cafe': 'Expert in Gastronomy, Boutique Hospitality, and Gourmet UX. Focus on sensory imagery, elegant typography, and booking-ready layouts.',
+        'gym': 'Expert in Fitness, High-Intensity Performance, and Athletic UX. Focus on kinetic energy, vibrant gradients, and membership-conversion grids.',
+        'gallery': 'Expert in High-Art, Minimalist Esthetics, and Curated Design. Focus on negative space, premium interactions, and visual storytelling.'
+      };
+
+      const specializedSkill = Object.entries(industrySkills).find(([key]) => domainName.toLowerCase().includes(key))?.[1] 
+                               || 'Expert in High-Performance Lead Generation and Premium Corporate Branding.';
+
       // 2. ARCHITECT - High-Fidelity Design
-      await logStep('Architect', `Arquitectando sistema de diseño 'High-Fidelity' para ${domainName} vía NVIDIA NIM...`, 'acting');
+      await logStep('Architect', `Arquitectando sistema de diseño 'Professional Elite' para ${domainName} vía NVIDIA NIM...`, 'acting');
       const plan = await this.invokeModel('nvidia', `
-        Create a high-end structural improvement plan for the domain: ${domainName}. 
+        Create a high-end, PROFESSIONAL structural improvement plan for the domain: ${domainName}. 
         Task context: ${analysis}.
+        Specialized Skill Engine: ${specializedSkill}
         ${latentMemory}
 
-        Focus on PREMIUM AESTHETICS and SPECIALIZED SKILLS tailored specifically for ${domainName}'s probable industry.
-        CRITICAL LATENT LOOP GUIDELINE: Ensure your new plan aligns with the "Previous Project Strategy" but pushes the complexity and professionalism further. Do not rewrite from scratch if the direction is already set. Integrate and evolve.
-        - Use Bento Grid layouts for feature sections.
-        - Implement a 'Glassmorphic' dashboard aesthetic if applicable.
-        - Define Kinetic Typography and smooth scroll behavior.
-        - Specify an HSL-tailored color palette for maximum visual 'Wow' factor.
+        Focus on PREMIUM AESTHETICS and MISSION-CRITICAL BUSINESS LOGIC.
+        CRITICAL LATENT LOOP GUIDELINE: Ensure your new plan aligns with the "Previous Project Strategy" but pushes the complexity and professionalism further. 
+        - MUST use Bento Grid layouts for feature sections.
+        - MUST implement Lucide-React icons for professional representation.
+        - MUST define Kinertic Typography and smooth scroll behavior.
+        - MUST specify an HSL-tailored color palette for maximum visual 'Wow' factor.
       `, tenantId);
 
       // 3. CODER - Elite Implementation
-      await logStep('Coder', `Generando código Astro/React de alta fidelidad con arquitectura 'Elite' para ${domainName}...`, 'acting');
+      await logStep('Coder', `Generando código Astro/React de alta fidelidad con arquitectura 'Elite' (v7.4) para ${domainName}...`, 'acting');
       const implementation = await this.invokeModel('nvidia', `
-        As the Swarm Coder Elite (v7.3), architect a PREMIUM, production-ready specialized website solution for: ${domainName}.
+        As the Swarm Coder Elite (v7.4), architect a PREMIUM, production-ready specialized website solution for: ${domainName}.
+        Your goal is to BEAT human designers. NO MINIMAL UPDATES. NO PLACEHOLDERS.
+        
         Follow the DESIGN SPEC strictly:
         ${plan}
         
         ${latentMemory}
 
-        Take into account the following existing repository state to improve upon it (do NOT destroy existing good logic, build upon it). Integrate the new components alongside the existing ones without losing the project's essence:
+        Take into account the following existing repository state to improve upon it (do NOT destroy existing good logic, build upon it). Integrate the new components alongside the existing ones:
         ${currentSourceContext}
 
-        REQUIRED FILES: 
-        1. src/pages/index.astro: Must include a stunning Hero section, high-conversion Features, and interactive components.
+        REQUIRED FILES (OUTPUT FULL CODE): 
+        1. src/pages/index.astro: Must be a COMPLETE, professional landing page. Use complex Tailwind classes, Bento grids, Glassmorphic cards, and Kinetic animations.
         2. src/layouts/Layout.astro: Must implement a unified aesthetic with the provided brand colors.
         
-        OUTPUT FORMAT: A valid JSON object ONLY.
+        OUTPUT FORMAT: A valid JSON object ONLY. NO PROSE.
         { 
           "seo": { "title": "...", "description": "..." }, 
           "brand": { "colors": { "primary": "...", "accent": "..." } }, 
           "pages": [ { "id": "home", "blocks": [...] } ],
           "file_mutations": [
-             { "path": "src/pages/index.astro", "content": "--- [PROFESSIONAL ASTRO CODE WITH BENTO GRIDS] ---" },
+             { "path": "src/pages/index.astro", "content": "--- [FULL ELITE ASTRO CODE WITH BENTO GRIDS & LUCIDE ICONS] ---" },
              { "path": "src/layouts/Layout.astro", "content": "--- [PREMIUM GLOBAL LAYOUT] ---" }
           ],
           "trigger_github_sync": true 

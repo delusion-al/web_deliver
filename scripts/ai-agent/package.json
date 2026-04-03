@@ -1,8 +1,10 @@
 {
   "name": "ai-agent",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
+    "start": "tsx src/worker.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,9 +13,12 @@
   "description": "",
   "dependencies": {
     "@jackchen_me/open-multi-agent": "github:JackChen-me/open-multi-agent",
-    "@types/node": "^25.5.0",
-    "dotenv": "^17.4.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.2"
+    "@octokit/rest": "^20.1.2",
+    "@supabase/supabase-js": "^2.101.1",
+    "@types/node": "^22.5.0",
+    "axios": "^1.14.0",
+    "dotenv": "^16.6.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.5.0"
   }
 }

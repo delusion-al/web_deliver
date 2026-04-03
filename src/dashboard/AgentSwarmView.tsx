@@ -36,6 +36,7 @@ export function AgentSwarmView() {
   };
 
   const fetchNodeLogs = async (tenantId: string) => {
+    if (!tenantId) return;
     const { data } = await supabase
       .from('pipeline_logs')
       .select('*')
@@ -52,6 +53,7 @@ export function AgentSwarmView() {
   }, []);
 
   const handleInteract = async (node: any) => {
+    if (!node.tenant_id) return;
     setSelectedNode(node);
     fetchNodeLogs(node.tenant_id);
     
@@ -70,21 +72,37 @@ export function AgentSwarmView() {
     return () => supabase.removeChannel(channel);
   };
 
-  const runManualOptimize = async () => {
+  const runManualOptimize = async (special_task?: string) => {
     if (!selectedNode || isRunningOnNode) return;
     setIsRunningOnNode(true);
-    const orchestrator = new SwarmOrchestrator();
     
     try {
-      await orchestrator.processTask(
-        "Auto-optimization and quality audit (High Contrast & SEO)", 
-        selectedNode.tenant_id
-      );
+      // THE NEW SECURE WAY: Instead of running directly, we queue a task for the Worker
+      // This allows the Worker (which has the NVIDIA keys and local Gemma access) to handle it.
+      await supabase.from('swarm_approvals').insert({
+        tenant_id: selectedNode.tenant_id,
+        proposed_changes: { 
+          task: special_task || "Auto-optimization and quality audit (High Contrast & SEO)",
+          source: 'dashboard_manual_trigger'
+        },
+        status: 'pending',
+        agent_id: 'Manager'
+      });
+      
+      // Local feedback
+      setNodeLogs(prev => [{
+        created_at: new Date().toISOString(),
+        agent_id: 'System',
+        action: 'swarm_task_queued',
+        metadata: { task: special_task || "Neural request sent to background worker..." }
+      }, ...prev]);
+
       fetchSwarmStats();
     } catch (e) {
       console.error(e);
     }
-    setIsRunningOnNode(false);
+    // We keep it "running" briefly for UI feedback
+    setTimeout(() => setIsRunningOnNode(false), 2000);
   };
 
   return (
@@ -110,8 +128,8 @@ export function AgentSwarmView() {
           <div className="flex flex-wrap gap-4 pt-4 border-t border-white/5">
              <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
                 <Server size={14} className="text-blue-400" />
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">NVIDIA NIM:</span>
-                <span className="text-[10px] text-emerald-400 font-mono">ONLINE (Latency: 1.2ms)</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">COGNITIVE SOURCE:</span>
+                <span className="text-[10px] text-emerald-400 font-mono">NVIDIA NIM + LOCAL HYBRID</span>
              </div>
              <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
                 <Activity size={14} className="text-purple-400" />
@@ -166,20 +184,20 @@ export function AgentSwarmView() {
                               </div>
                            </div>
                            <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-                              <div className="text-[9px] text-slate-500 uppercase font-bold mb-1">MÉTRICA</div>
-                              <div className="text-lg font-black text-blue-400">
-                                 {swarm.log_count} <span className="text-[10px] text-slate-600">EVTS</span>
-                              </div>
+                               <div className="text-[9px] text-slate-500 uppercase font-bold mb-1">MÉTRICA</div>
+                               <div className="text-lg font-black text-blue-400">
+                                  {swarm.log_count || 0} <span className="text-[10px] text-slate-600">EVTS</span>
+                               </div>
                            </div>
                         </div>
 
                         <div className="space-y-2 pt-2">
                            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-500">
-                              <span>ESTADO DE PROCESO</span>
-                              <span className="text-blue-400">OPTIMIZANDO...</span>
+                              <span>PROCESO NEURAL</span>
+                              <span className="text-blue-400">{swarm.log_count > 0 ? 'INTERVINIENDO...' : 'STANDBY (MONITORING)'}</span>
                            </div>
                            <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
-                              <div className="h-full w-[65%] bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse" />
+                              <div className={`h-full bg-gradient-to-r from-blue-500 to-indigo-600 ${swarm.log_count > 0 ? 'animate-pulse w-[85%]' : 'w-0'}`} />
                            </div>
                         </div>
 
@@ -205,7 +223,7 @@ export function AgentSwarmView() {
              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">OPEN BOX CONSOLE</h3>
           </div>
 
-          <Card className="glass-card border-slate-800 bg-black/80 h-[600px] flex flex-col overflow-hidden relative">
+          <Card className="glass-card border-slate-800 bg-black/80 h-[600px] flex flex-col overflow-hidden relative shadow-2xl">
              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-white/5">
                 <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">
                    {selectedNode ? selectedNode.domain_name : 'No node selected'}
@@ -220,20 +238,24 @@ export function AgentSwarmView() {
              <div className="flex-1 p-4 overflow-y-auto custom-scrollbar font-mono text-[10px] space-y-3">
                 {!selectedNode ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-600 gap-4">
-                     <Terminal size={32} strokeWidth={1} />
+                     <Terminal size={32} strokeWidth={1} className="animate-pulse" />
                      <p className="uppercase tracking-[0.2em] leading-relaxed">Selecciona un nodo para abrir la terminal neuronal del enjambre.</p>
                   </div>
                 ) : (
                   <>
-                    <div className="text-blue-500/50 mb-2">Connecting to parallel swarm on node {selectedNode.tenant_id.substring(0,8)}...</div>
-                    <div className="text-emerald-500/50 mb-4 animate-pulse">AUTH: Local Gemma Session Established</div>
+                    <div className="text-blue-500/50 mb-2 font-black border-b border-blue-500/10 pb-1">
+                      CONNECTION: PARALLEL_SWARM_{selectedNode.tenant_id ? selectedNode.tenant_id.substring(0,8) : 'UNK'}
+                    </div>
+                    <div className="text-emerald-500/50 mb-4 animate-pulse flex items-center gap-1">
+                      <Zap size={10} /> AUTH: SECURE_WORKER_FEED_ESTABLISHED
+                    </div>
                     
                     {nodeLogs.length === 0 ? (
-                      <div className="text-slate-800">Listening to events...</div>
+                      <div className="text-slate-800 italic uppercase tracking-widest text-[8px]">Escuchando pulso de agentes...</div>
                     ) : (
                       nodeLogs.map((log, i) => {
-                        const content = log.metadata?.content || log.action;
-                        const thoughtMatch = content.match(/<thought>([\s\S]*?)<\/thought>/);
+                        const content = (log.metadata as any)?.content || log.action || '';
+                        const thoughtMatch = typeof content === 'string' ? content.match(/<thought>([\s\S]*?)<\/thought>/) : null;
                         const thought = thoughtMatch ? thoughtMatch[1] : null;
                         const rest = thoughtMatch ? content.replace(/<thought>[\s\S]*?<\/thought>/, '') : content;
 
@@ -252,7 +274,7 @@ export function AgentSwarmView() {
                             )}
 
                             <div className="text-slate-300 pl-1">
-                               {log.action === 'swarm_task_started' ? `> Init task: ${log.metadata?.task}` : rest}
+                               {log.action === 'swarm_task_started' ? `> Init task: ${(log.metadata as any)?.task}` : rest}
                             </div>
                           </div>
                         );
@@ -260,9 +282,9 @@ export function AgentSwarmView() {
                     )}
 
                     {isRunningOnNode && (
-                       <div className="flex items-center gap-2 text-blue-400 animate-pulse pt-2">
+                       <div className="flex items-center gap-2 text-blue-400 animate-pulse pt-2 border-t border-white/5 mt-4">
                           <Loader2 size={12} className="animate-spin" />
-                          <span>AGENTS IN FLIGHT (NVIDIA NIM)...</span>
+                          <span className="uppercase font-black text-[9px]">SIGNAL SENT TO NEURAL CORE...</span>
                        </div>
                     )}
                   </>
@@ -270,11 +292,31 @@ export function AgentSwarmView() {
              </div>
 
              {selectedNode && (
-                <div className="p-4 border-t border-white/5 bg-white/5 mt-auto">
+                <div className="p-4 border-t border-white/5 bg-slate-900/50 mt-auto space-y-3">
+                   <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="secondary"
+                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold h-8 uppercase"
+                        onClick={() => runManualOptimize("Redirigir agentes: Enfocarse en Conversión y UX Móvil")}
+                        disabled={isRunningOnNode}
+                      >
+                         <Bot size={12} className="mr-2" /> Redirigir Agents
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="secondary"
+                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold h-8 uppercase"
+                        onClick={() => runManualOptimize("Audit SEO e Indexación")}
+                        disabled={isRunningOnNode}
+                      >
+                         <Code size={12} className="mr-2" /> Audit SEO
+                      </Button>
+                   </div>
                    <Button 
                      size="sm" 
-                     className="w-full bg-blue-600 hover:bg-blue-700 text-[10px] font-bold h-9"
-                     onClick={runManualOptimize}
+                     className="w-full bg-blue-600 hover:bg-blue-700 text-[10px] font-black h-10 shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+                     onClick={() => runManualOptimize()}
                      disabled={isRunningOnNode}
                    >
                       {isRunningOnNode ? <Loader2 size={14} className="animate-spin mr-2" /> : <Zap size={14} className="mr-2" />}

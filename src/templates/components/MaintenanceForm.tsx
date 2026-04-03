@@ -21,13 +21,12 @@ export function MaintenanceForm({ tenantId }: MaintenanceFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('maintenance-proxy', {
-        body: {
-          tenantId,
-          subject,
-          description,
-          contactEmail: email
-        }
+      const { error } = await supabase.from('maintenance_tickets').insert({
+        tenant_id: tenantId,
+        subject: subject,
+        description: description,
+        contact_email: email,
+        status: 'pending'
       });
       
       if (error) throw error;

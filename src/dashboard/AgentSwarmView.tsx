@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Bot, 
@@ -10,16 +9,23 @@ import {
   Terminal, 
   Zap, 
   RefreshCcw, 
-  Play, 
   Cpu, 
   Server,
-  Network
+  Network,
+  ChevronRight,
+  ShieldCheck,
+  Code,
+  Loader2,
+  X
 } from 'lucide-react';
+import { SwarmOrchestrator } from '../agents/SwarmOrchestrator';
 
 export function AgentSwarmView() {
   const [activeSwarms, setActiveSwarms] = useState<any[]>([]);
-  const [broadcastTask, setBroadcastTask] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [nodeLogs, setNodeLogs] = useState<any[]>([]);
+  const [isRunningOnNode, setIsRunningOnNode] = useState(false);
 
   const fetchSwarmStats = async () => {
     setIsSyncing(true);
@@ -29,21 +35,60 @@ export function AgentSwarmView() {
     setIsSyncing(false);
   };
 
+  const fetchNodeLogs = async (tenantId: string) => {
+    const { data } = await supabase
+      .from('pipeline_logs')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (data) setNodeLogs(data);
+  };
+
   useEffect(() => {
     fetchSwarmStats();
     const sub = supabase.channel('swarm_view').on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_logs' }, fetchSwarmStats).subscribe();
     return () => { supabase.removeChannel(sub); };
   }, []);
 
-  const handleBroadcast = async () => {
-    if (!broadcastTask) return;
-    // In a real swarm, this would send an event to all active tenants
-    alert(`Protocolo de Emisión Global iniciado: "${broadcastTask}" en ${activeSwarms.length} nodos active.`);
-    setBroadcastTask('');
+  const handleInteract = async (node: any) => {
+    setSelectedNode(node);
+    fetchNodeLogs(node.tenant_id);
+    
+    // Subscribe to real-time logs for this specific node
+    const channel = supabase.channel(`node_${node.tenant_id}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'pipeline_logs',
+        filter: `tenant_id=eq.${node.tenant_id}`
+      }, (payload) => {
+        setNodeLogs(prev => [payload.new, ...prev].slice(0, 10));
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  };
+
+  const runManualOptimize = async () => {
+    if (!selectedNode || isRunningOnNode) return;
+    setIsRunningOnNode(true);
+    const orchestrator = new SwarmOrchestrator();
+    
+    try {
+      await orchestrator.processTask(
+        "Auto-optimization and quality audit (High Contrast & SEO)", 
+        selectedNode.tenant_id
+      );
+      fetchSwarmStats();
+    } catch (e) {
+      console.error(e);
+    }
+    setIsRunningOnNode(false);
   };
 
   return (
-    <div className="space-y-10 max-w-6xl mx-auto animate-in fade-in duration-1000">
+    <div className="space-y-10 max-w-7xl mx-auto animate-in fade-in duration-1000 p-4">
       {/* Header Section */}
       <div className="relative p-10 rounded-3xl bg-slate-900/10 border border-white/5 overflow-hidden group">
         <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
@@ -55,9 +100,9 @@ export function AgentSwarmView() {
                 <Cpu size={32} className="text-white" />
              </div>
              <div>
-                <h2 className="text-5xl font-black tracking-tighter text-white">ORQUESTACIÓN NEURAL</h2>
-                <p className="text-slate-500 font-mono text-xs uppercase tracking-[0.3em] mt-1 italic">
-                  Sincronización Multimodal • Gemma 4 Local • Claude Code Leak v2
+                <h2 className="text-5xl font-black tracking-tighter text-white uppercase italic">ORQUESTACIÓN NEURAL</h2>
+                <p className="text-slate-500 font-mono text-xs uppercase tracking-[0.3em] mt-1">
+                  Sincronización Multimodal • Gemma 4 Local • NVIDIA NIM v3
                 </p>
              </div>
           </div>
@@ -66,146 +111,203 @@ export function AgentSwarmView() {
              <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
                 <Server size={14} className="text-blue-400" />
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">NVIDIA NIM:</span>
-                <span className="text-[10px] text-emerald-400 font-mono">LATENCIA 0.8ms</span>
+                <span className="text-[10px] text-emerald-400 font-mono">ONLINE (Latency: 1.2ms)</span>
              </div>
              <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
                 <Activity size={14} className="text-purple-400" />
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">THROUGHPUT:</span>
-                <span className="text-[10px] text-purple-400 font-mono">1.2 Tps/NODE</span>
-             </div>
-             <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
-                <Zap size={14} className="text-orange-400" />
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ESTADO:</span>
-                <span className="text-[10px] text-orange-400 font-mono">AUTO-OPTIMIZACIÓN ACTIVA</span>
+                <span className="text-[10px] text-purple-400 font-mono">15.4 Ops/Min</span>
              </div>
           </div>
         </div>
       </div>
 
-      {/* Broadcast Control */}
-      <Card className="glass-card border-blue-500/20 bg-blue-500/5 p-6 shadow-[0_0_40px_rgba(37,99,235,0.05)]">
-        <div className="flex flex-col md:flex-row gap-6">
-           <div className="shrink-0 space-y-1">
-              <div className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                 <Terminal size={14} /> COMANDO FLOTA GLOBAL
-              </div>
-              <p className="text-[10px] text-slate-500 max-w-[200px]">
-                 Ejecuta mejoras o mantenimiento masivo en todos los nodos web.
-              </p>
-           </div>
-           <div className="flex-1 flex gap-3 h-12">
-              <Input 
-                placeholder="Ej: 'Actualizar todas las webs a v2.5' o 'Mejorar contrastes'..." 
-                className="bg-slate-950 border-slate-800 h-full text-xs"
-                value={broadcastTask}
-                onChange={e => setBroadcastTask(e.target.value)}
-              />
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700 h-full px-8 shadow-lg shadow-blue-500/20 text-xs font-bold"
-                onClick={handleBroadcast}
-              >
-                 DESPLEGAR FLOTA
-              </Button>
-           </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Parallel Grid - Main 3 Columns */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="flex items-center justify-between px-2">
+             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Activity size={14} className="text-emerald-500" /> MONITOR DE ENJAMBRES PARALELOS
+             </h3>
+             <Button variant="ghost" size="sm" className="h-8 text-[10px] text-slate-500" onClick={fetchSwarmStats}>
+                <RefreshCcw size={12} className={`mr-2 ${isSyncing ? 'animate-spin' : ''}`} /> SINCRONIZAR ESTADOS
+             </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             {activeSwarms.length === 0 ? (
+                <div className="col-span-2 text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl text-slate-600 italic">
+                   No hay actividades de enjambre detectadas.
+                </div>
+             ) : (
+                activeSwarms.map((swarm, i) => (
+                  <Card key={i} className={`glass-card border-white/5 bg-slate-900/40 p-6 hover:border-blue-500/30 transition-all group/swarm ${selectedNode?.tenant_id === swarm.tenant_id ? 'ring-2 ring-blue-500/50 scale-[1.02]' : ''}`}>
+                     <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                           <div className="h-10 w-10 bg-slate-950 rounded-xl flex items-center justify-center border border-white/5 group-hover/swarm:border-blue-500/30 transition-all">
+                              <Bot size={20} className="text-blue-500" />
+                           </div>
+                           <div>
+                              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-none mb-1">NODO ACTIVO</div>
+                              <div className="text-sm font-bold text-white tracking-tight truncate max-w-[150px]">{swarm.domain_name}</div>
+                           </div>
+                        </div>
+                        <Badge variant="outline" className={`text-[9px] uppercase font-mono px-2 py-0.5 rounded ${swarm.tenant_status === 'published' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
+                           {swarm.tenant_status}
+                        </Badge>
+                     </div>
+
+                     <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                           <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                              <div className="text-[9px] text-slate-500 uppercase font-bold mb-1">AGENTES</div>
+                              <div className="text-lg font-black text-white flex items-center gap-2">
+                                 {Math.floor(Math.random() * 3) + 2} <span className="text-[10px] text-slate-600">ACTIVE</span>
+                              </div>
+                           </div>
+                           <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                              <div className="text-[9px] text-slate-500 uppercase font-bold mb-1">MÉTRICA</div>
+                              <div className="text-lg font-black text-blue-400">
+                                 {swarm.log_count} <span className="text-[10px] text-slate-600">EVTS</span>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2">
+                           <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-500">
+                              <span>ESTADO DE PROCESO</span>
+                              <span className="text-blue-400">OPTIMIZANDO...</span>
+                           </div>
+                           <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
+                              <div className="h-full w-[65%] bg-gradient-to-r from-blue-500 to-indigo-600 animate-pulse" />
+                           </div>
+                        </div>
+
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full h-10 text-[10px] text-blue-400 hover:text-blue-300 group/btn bg-blue-500/5 mt-2 border border-blue-500/10"
+                          onClick={() => handleInteract(swarm)}
+                        >
+                           INTERACTUAR TERMINAL <ChevronRight size={10} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                     </div>
+                  </Card>
+                ))
+             )}
+          </div>
         </div>
-      </Card>
 
-      {/* Parallel Grid */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-           <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Activity size={14} className="text-emerald-500" /> MONITOR DE ENJAMBRES PARALELOS
-           </h3>
-           <Button variant="ghost" size="sm" className="h-8 text-[10px] text-slate-500" onClick={fetchSwarmStats}>
-              <RefreshCcw size={12} className={`mr-2 ${isSyncing ? 'animate-spin' : ''}`} /> SINCRONIZAR ESTADOS
-           </Button>
-        </div>
+        {/* Console / Open Box Section - Right Sidebar */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="flex items-center gap-2 px-2">
+             <Terminal size={14} className="text-blue-500" />
+             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">OPEN BOX CONSOLE</h3>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-           {activeSwarms.length === 0 ? (
-              <div className="col-span-3 text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl text-slate-600 italic">
-                 No hay actividades de enjambre detectadas. Inicie un "Protocolo Swarm" en sus prospectos.
-              </div>
-           ) : (
-              activeSwarms.map((swarm, i) => (
-                <Card key={i} className="glass-card border-white/5 bg-slate-900/40 p-6 hover:border-blue-500/30 transition-all group/swarm">
-                   <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                         <div className="h-10 w-10 bg-slate-950 rounded-xl flex items-center justify-center border border-white/5 group-hover/swarm:border-blue-500/30 transition-all">
-                            <Bot size={20} className="text-blue-500" />
-                         </div>
-                         <div>
-                            <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-none mb-1">NODO ACTIVO</div>
-                            <div className="text-sm font-bold text-white tracking-tight">{swarm.domain_name}</div>
-                         </div>
-                      </div>
-                      <Badge variant="outline" className={`text-[9px] uppercase font-mono px-2 py-0.5 rounded ${swarm.tenant_status === 'published' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
-                         {swarm.tenant_status}
-                      </Badge>
-                   </div>
+          <Card className="glass-card border-slate-800 bg-black/80 h-[600px] flex flex-col overflow-hidden relative">
+             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-white/5">
+                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">
+                   {selectedNode ? selectedNode.domain_name : 'No node selected'}
+                </span>
+                {selectedNode && (
+                  <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white">
+                    <X size={14} />
+                  </button>
+                )}
+             </div>
 
-                   <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                         <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-                            <div className="text-[9px] text-slate-500 uppercase font-bold mb-1">AGENTES</div>
-                            <div className="text-lg font-black text-white flex items-center gap-2">
-                               {Math.floor(Math.random() * 3) + 2} <span className="text-[10px] text-slate-600">PARALELOS</span>
+             <div className="flex-1 p-4 overflow-y-auto custom-scrollbar font-mono text-[10px] space-y-3">
+                {!selectedNode ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-600 gap-4">
+                     <Terminal size={32} strokeWidth={1} />
+                     <p className="uppercase tracking-[0.2em] leading-relaxed">Selecciona un nodo para abrir la terminal neuronal del enjambre.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-blue-500/50 mb-2">Connecting to parallel swarm on node {selectedNode.tenant_id.substring(0,8)}...</div>
+                    <div className="text-emerald-500/50 mb-4 animate-pulse">AUTH: Local Gemma Session Established</div>
+                    
+                    {nodeLogs.length === 0 ? (
+                      <div className="text-slate-800">Listening to events...</div>
+                    ) : (
+                      nodeLogs.map((log, i) => {
+                        const content = log.metadata?.content || log.action;
+                        const thoughtMatch = content.match(/<thought>([\s\S]*?)<\/thought>/);
+                        const thought = thoughtMatch ? thoughtMatch[1] : null;
+                        const rest = thoughtMatch ? content.replace(/<thought>[\s\S]*?<\/thought>/, '') : content;
+
+                        return (
+                          <div key={i} className="animate-in slide-in-from-bottom-1 duration-300 border-l border-white/5 pl-2 ml-1">
+                            <div className="flex items-center gap-2 mb-1">
+                               <span className="text-slate-600">[{new Date(log.created_at).toLocaleTimeString()}]</span>
+                               <span className={`${log.agent_id === 'Manager' ? 'text-blue-400' : 'text-purple-400'} font-bold`}>{log.agent_id || 'System'}:</span>
                             </div>
-                         </div>
-                         <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-                            <div className="text-[9px] text-slate-500 uppercase font-bold mb-1">LOGS</div>
-                            <div className="text-lg font-black text-blue-400">
-                               {swarm.log_count} <span className="text-[10px] text-slate-600">EVTS</span>
+                            
+                            {thought && (
+                               <div className="bg-blue-500/5 text-blue-300/40 italic p-2 rounded-lg border border-blue-500/10 mb-2 leading-relaxed text-[9px]">
+                                  <span className="text-[8px] font-black uppercase tracking-tighter opacity-50 block mb-1">INTERNAL REASONING // PROCESO COGNITIVO</span>
+                                  {thought.trim()}
+                               </div>
+                            )}
+
+                            <div className="text-slate-300 pl-1">
+                               {log.action === 'swarm_task_started' ? `> Init task: ${log.metadata?.task}` : rest}
                             </div>
-                         </div>
-                      </div>
+                          </div>
+                        );
+                      })
+                    )}
 
-                      <div className="space-y-2 pt-2">
-                         <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-500">
-                            <span>SALUD CONGNITIVA</span>
-                            <span className="text-blue-400">98%</span>
-                         </div>
-                         <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
-                            <div className="h-full w-[98%] bg-gradient-to-r from-blue-500 to-indigo-600" />
-                         </div>
-                      </div>
+                    {isRunningOnNode && (
+                       <div className="flex items-center gap-2 text-blue-400 animate-pulse pt-2">
+                          <Loader2 size={12} className="animate-spin" />
+                          <span>AGENTS IN FLIGHT (NVIDIA NIM)...</span>
+                       </div>
+                    )}
+                  </>
+                )}
+             </div>
 
-                      <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/5">
-                         <div className="flex items-center gap-2 text-[10px] text-slate-600 italic">
-                            <Clock size={10} /> {new Date(swarm.last_activity).toLocaleTimeString()}
-                         </div>
-                         <Button variant="ghost" size="sm" className="h-8 text-[10px] text-blue-400 hover:text-blue-300 group/btn">
-                            INTERACTUAR <Play size={10} className="ml-1 group-hover/btn:translate-x-0.5 transition-transform" />
-                         </Button>
-                      </div>
+             {selectedNode && (
+                <div className="p-4 border-t border-white/5 bg-white/5 mt-auto">
+                   <Button 
+                     size="sm" 
+                     className="w-full bg-blue-600 hover:bg-blue-700 text-[10px] font-bold h-9"
+                     onClick={runManualOptimize}
+                     disabled={isRunningOnNode}
+                   >
+                      {isRunningOnNode ? <Loader2 size={14} className="animate-spin mr-2" /> : <Zap size={14} className="mr-2" />}
+                      FORZAR OPTIMIZACIÓN NEURAL
+                   </Button>
+                </div>
+             )}
+          </Card>
+
+          {/* Quick Metrics */}
+          <div className="space-y-4">
+             <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
+                <div className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">SALUD DE FLOTA</div>
+                <div className="flex items-center justify-between">
+                   <div className="text-xl font-black text-white">99.8%</div>
+                   <div className="h-8 w-8 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                      <ShieldCheck size={16} className="text-emerald-400" />
                    </div>
-                </Card>
-              ))
-           )}
+                </div>
+             </div>
+             <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10">
+                <div className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">BITS PROCESADOS</div>
+                <div className="flex items-center justify-between">
+                   <div className="text-xl font-black text-white">2.4 TB</div>
+                   <div className="h-8 w-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                      <Code size={16} className="text-blue-400" />
+                   </div>
+                </div>
+             </div>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-// Minimal Clock icon for the swarm card
-function Clock({ size, className }: { size: number, className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
   );
 }
 

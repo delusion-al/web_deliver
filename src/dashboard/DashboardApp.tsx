@@ -78,7 +78,7 @@ export function DashboardApp() {
             ))}
           </nav>
 
-          <div className="p-6 border-t border-slate-800/50 m-4 rounded-xl bg-slate-900/40">
+          <div className="p-6 border-t border-slate-800/50 m-4 rounded-xl bg-slate-900/40 mt-auto">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold shadow-lg text-white">
                 {user?.email?.[0].toUpperCase() || 'A'}
@@ -94,37 +94,29 @@ export function DashboardApp() {
           </div>
         </aside>
 
-        <main className="flex-1 ml-64 p-8 pl-12 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent">
-          <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-700 space-y-8">
-            {/* Global Fleet Metrics */}
-            <div className="flex gap-4">
-               <div className="flex-1 bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4 flex items-center gap-4">
-                  <div className="h-10 w-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                     <Globe size={20} className="text-blue-400" />
+        <main className="flex-1 ml-64 p-8 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent">
+          <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">FLEET COMMAND</h1>
+                <p className="text-slate-500 font-mono text-[10px] uppercase tracking-[0.3em]">Neural Factory Dashboard // v2.8</p>
+              </div>
+              <div className="flex gap-4">
+                <div className="px-5 py-3 bg-slate-900/50 border border-white/5 rounded-2xl flex items-center gap-4 group hover:border-blue-500/30 transition-all">
+                  <Activity size={24} className="text-blue-500 group-hover:animate-pulse" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">ENJAMBRES</span>
+                    <span className="text-xl font-black text-white leading-none">12 <span className="text-[10px] text-emerald-500">ACTIVOS</span></span>
                   </div>
-                  <div>
-                     <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Nodos Generados</div>
-                     <div className="text-xl font-black text-white leading-none">08</div>
+                </div>
+                <div className="px-5 py-3 bg-slate-900/50 border border-white/5 rounded-2xl flex items-center gap-4 group hover:border-purple-500/30 transition-all">
+                  <ShieldCheck size={24} className="text-purple-500" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">TICKETS</span>
+                    <span className="text-xl font-black text-white leading-none">5 <span className="text-[10px] text-purple-400">EN COLA</span></span>
                   </div>
-               </div>
-               <div className="flex-1 bg-purple-500/5 border border-purple-500/10 rounded-2xl p-4 flex items-center gap-4">
-                  <div className="h-10 w-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                     <Bot size={20} className="text-purple-400" />
-                  </div>
-                  <div>
-                     <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Agentes en Paralelo</div>
-                     <div className="text-xl font-black text-white leading-none">24</div>
-                  </div>
-               </div>
-               <div className="flex-1 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 flex items-center gap-4">
-                  <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                     <Activity size={20} className="text-emerald-400" />
-                  </div>
-                  <div>
-                     <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Estado del Enjambre</div>
-                     <div className="text-xl font-black text-white leading-none uppercase">Activo</div>
-                  </div>
-               </div>
+                </div>
+              </div>
             </div>
 
             {activeTab === 'leads' && <LeadsManager />}

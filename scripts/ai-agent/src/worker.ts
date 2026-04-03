@@ -1,10 +1,14 @@
 import { config } from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import WebSocket from 'ws';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 config({ path: path.resolve(__dirname, '../../../.env') });
+
+// Polyfill WebSocket for Supabase Realtime in Node.js
+(global as any).WebSocket = WebSocket;
 
 import { supabase } from '../../../src/utils/supabase';
 import { SwarmOrchestrator } from '../../../src/agents/SwarmOrchestrator';
@@ -69,32 +73,41 @@ async function runSwarmWorker() {
     });
 
   // 3. Fallback Polling (for environments where real-time is flaky)
+  let isProcessing = false;
   async function pollPendingTasks() {
-    console.log('[POLLER] Searching for pending tasks...');
-    const { data: tickets } = await supabase
-      .from('maintenance_tickets')
-      .select('*')
-      .eq('status', 'pending');
+    if (isProcessing) return;
+    isProcessing = true;
+    
+    try {
+      const { data: tickets } = await supabase
+        .from('maintenance_tickets')
+        .select('*')
+        .eq('status', 'pending');
 
-    if (tickets && tickets.length > 0) {
-      console.log(`[POLLER] Found ${tickets.length} pending tickets. processing...`);
-      for (const ticket of tickets) {
-        console.log(`[TICKET PROCESS] Subject: ${ticket.subject}`);
-        try {
-          const orchestrator = new SwarmOrchestrator();
-          await orchestrator.processTask(
-            `Resolve ticket: ${ticket.subject}. Description: ${ticket.description}`,
-            ticket.tenant_id
-          );
-          await supabase.from('maintenance_tickets').update({ 
-            status: 'completed',
-            ai_response: 'Optimization cycle completed by Neural Swarm v3.1 (via Poller).'
-          }).eq('id', ticket.id);
-          console.log(`[TICKET COMPLETE] ${ticket.id}`);
-        } catch (err: any) {
-          console.error(`[TICKET ERROR] ${err.message}`);
-        }
+      if (tickets && tickets.length > 0) {
+        console.log(`[POLLER] Found ${tickets.length} pending tickets. Processing first one...`);
+        const ticket = tickets[0];
+        
+        // Mark as processing immediately
+        await supabase.from('maintenance_tickets').update({ status: 'processing' }).eq('id', ticket.id);
+        
+        console.log(`[TICKET START] Subject: ${ticket.subject}`);
+        const orchestrator = new SwarmOrchestrator();
+        await orchestrator.processTask(
+          `Resolve ticket: ${ticket.subject}. Description: ${ticket.description}`,
+          ticket.tenant_id
+        );
+        
+        await supabase.from('maintenance_tickets').update({ 
+          status: 'completed',
+          ai_response: 'Optimization cycle completed by Neural Swarm v4.0. Changes pushed to GitHub.'
+        }).eq('id', ticket.id);
+        console.log(`[TICKET COMPLETE] ${ticket.id}`);
       }
+    } catch (e: any) {
+      console.error(`[POLLER ERROR] ${e.message}`);
+    } finally {
+      isProcessing = false;
     }
   }
 
@@ -103,8 +116,8 @@ async function runSwarmWorker() {
   setInterval(pollPendingTasks, 15000);
 
   console.log('[DEBUG] Testing DB connection...');
-  const { data: dbTest } = await supabase.from('tenants').select('count', { count: 'exact', head: true });
-  console.log(`[DEBUG] DB connection successful. Tenants count: ${dbTest || 0}`);
+  const { data: dbTest, count } = await supabase.from('tenants').select('count', { count: 'exact', head: true });
+  console.log(`[DEBUG] DB connection successful. Tenants count: ${count || 0}`);
 
   // Keep process alive
   setInterval(() => {

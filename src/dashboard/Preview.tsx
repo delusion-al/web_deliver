@@ -20,6 +20,19 @@ export function Preview() {
       setLoading(false);
     }
     loadTenant();
+
+    const channel = supabase.channel(`preview_${tenantId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'tenant_configs',
+        filter: `tenant_id=eq.${tenantId}`
+      }, (payload) => {
+        setConfig(payload.new);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [tenantId]);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-950 text-blue-500 animate-pulse font-mono uppercase tracking-widest">Sincronizando con AI Factory...</div>;

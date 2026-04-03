@@ -32,7 +32,7 @@ export class SwarmOrchestrator {
   async processTask(task: string, tenantId: string, onUpdate?: (msg: SwarmMessage) => void) {
     if (!tenantId) throw new Error('Tenant ID is required for swarm orchestration');
     
-    const totalSteps = 5;
+    const totalSteps = 6;
     let currentStep = 0;
 
     const logStep = async (role: AgentRole, content: string, status: SwarmMessage['status'], metadata: any = {}) => {
@@ -40,8 +40,24 @@ export class SwarmOrchestrator {
       const msg: SwarmMessage = { role, content, status, step: currentStep, totalSteps };
       if (onUpdate) onUpdate(msg);
 
-      // Update the "Open Box" status in Supabase for real-time dashboard tracking
+      // Explicitly mark as 'processing' in the database during steps
+      const dbStatus = status === 'done' ? 'approved' : status === 'failed' ? 'rejected' : 'processing';
+
+      // Track history
+      await this.db.rpc('append_task_history', {
+        p_tenant_id: tenantId,
+        p_log: { 
+          role, 
+          status, 
+          summary: content.length > 50 ? content.substring(0, 47) + '...' : content,
+          timestamp: new Date().toISOString() 
+        }
+      });
+
+      // Update the "Open Box" status and the overall approval state
       await this.db.from('swarm_approvals').update({
+        status: dbStatus,
+        updated_at: new Date().toISOString(),
         current_status: { 
           role, 
           content, 
@@ -49,7 +65,7 @@ export class SwarmOrchestrator {
           progress: Math.round((currentStep / totalSteps) * 100),
           last_updated: new Date().toISOString()
         }
-      }).eq('tenant_id', tenantId).eq('status', 'pending');
+      }).eq('tenant_id', tenantId).filter('status', 'in', '("pending","processing")');
 
       await this.db.from('pipeline_logs').insert({
         action: `swarm_${role.toLowerCase()}_${status}`,
@@ -60,9 +76,11 @@ export class SwarmOrchestrator {
     };
 
     try {
+      // 0. INITIALIZATION
+      await logStep('Manager', `Neural Link Established. Sincronizando con el nodo "${tenantId.substring(0,8)}"...`, 'thinking');
+
       // 1. MANAGER - Analysis
-      const nodeLabel = tenantId.split('-')[0] || 'Unknown';
-      await logStep('Manager', `Analizando arquitectura para el nodo "${nodeLabel}". Consultando fuentes cognitivas...`, 'thinking');
+      await logStep('Manager', `Analizando arquitectura actual. Consultando fuentes cognitivas...`, 'thinking');
       const analysis = await this.invokeModel('gemma:7b', `Analyze this request for website optimization: ${task}. Focus on UX/SEO.`, tenantId);
 
       // 2. ARCHITECT - Design
@@ -74,7 +92,7 @@ export class SwarmOrchestrator {
       const implementation = await this.invokeModel('nvidia', `
         Implement the following plan: ${plan}. 
         OUTPUT FORMAT: A valid JSON object ONLY.
-        { "seo": { "title": "...", "description": "..." }, "brand": { "colors": { "primary": "..." } }, "trigger_github_sync": true }
+        { "seo": { "title": "...", "description": "..." }, "brand": { "colors": { "primary": "...", "accent": "..." } }, "trigger_github_sync": true }
       `, tenantId);
 
       // 4. REVIEWER - Verification
@@ -82,7 +100,7 @@ export class SwarmOrchestrator {
       await new Promise(r => setTimeout(r, 1500));
 
       // 5. DEPLOYMENT & SYNC
-      await logStep('Manager', `Sincronizando mejoras con el repositorio GitHub...`, 'acting');
+      await logStep('Manager', `Sincronizando mejoras con Supabase Oracle y Repositorio GitHub...`, 'acting');
       
       try {
         const cleanJson = this.extractJson(implementation);
@@ -91,16 +109,16 @@ export class SwarmOrchestrator {
         } else {
            throw new Error('Failed to parse model implementation as JSON');
         }
-      } catch (e: any) {
-        console.warn('Fallback to raw update due to error:', e.message);
+      } catch (e) {
+        console.warn('Fallback to raw update due to error:', e);
         await this.applyChangesToTenant(tenantId, { raw_update: implementation });
       }
 
       await logStep('Manager', 'Optimización paralela completada. Cambios persistidos y desplegados.', 'done');
 
-    } catch (error: any) {
-      console.error('Swarm Error:', error);
-      await logStep('Manager', `Error crítico: ${error.message || 'Unknown error'}`, 'failed');
+    } catch (e: any) {
+      console.error('Swarm Error:', e);
+      await logStep('Manager', `Error crítico: ${e.message || 'Unknown error'}`, 'failed');
     }
   }
 
@@ -198,7 +216,15 @@ export class SwarmOrchestrator {
       updated_at: new Date().toISOString()
     };
 
-    await this.db.from('tenant_configs').update(newConfig).eq('tenant_id', tenantId);
+    // 1. Sync to Supabase
+    const { error: dbError } = await this.db
+      .from('tenant_configs')
+      .upsert({ 
+        tenant_id: tenantId, 
+        ...newConfig
+      }, { onConflict: 'tenant_id' });
+    
+    if (dbError) console.error('Database Sync Failed:', dbError);
 
     // Sync to GitHub if bridge is active and repo is available
     if (this.github && tenant?.github_repo) {

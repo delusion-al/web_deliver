@@ -16,9 +16,10 @@ import {
   ShieldCheck,
   Code,
   Loader2,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react';
-import { SwarmOrchestrator } from '../agents/SwarmOrchestrator';
+// import { SwarmOrchestrator } from '../agents/SwarmOrchestrator';
 
 export function AgentSwarmView() {
   const [activeSwarms, setActiveSwarms] = useState<any[]>([]);
@@ -26,6 +27,7 @@ export function AgentSwarmView() {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [nodeLogs, setNodeLogs] = useState<any[]>([]);
   const [isRunningOnNode, setIsRunningOnNode] = useState(false);
+  const [terminalInput, setTerminalInput] = useState('');
 
   const fetchSwarmStats = async () => {
     setIsSyncing(true);
@@ -127,14 +129,19 @@ export function AgentSwarmView() {
           
           <div className="flex flex-wrap gap-4 pt-4 border-t border-white/5">
              <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
+                <ShieldCheck size={14} className="text-emerald-400" />
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">NEURAL CORE:</span>
+                <span className="text-[10px] text-emerald-400 font-mono">ACTIVE (STABLE)</span>
+             </div>
+             <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
                 <Server size={14} className="text-blue-400" />
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">COGNITIVE SOURCE:</span>
                 <span className="text-[10px] text-emerald-400 font-mono">NVIDIA NIM + LOCAL HYBRID</span>
              </div>
              <div className="flex items-center gap-2 px-4 py-2 bg-slate-950/50 rounded-lg border border-white/5">
                 <Activity size={14} className="text-purple-400" />
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">THROUGHPUT:</span>
-                <span className="text-[10px] text-purple-400 font-mono">15.4 Ops/Min</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">OPS PULSE:</span>
+                <span className="text-[10px] text-purple-400 font-mono">ENHANCED FEED</span>
              </div>
           </div>
         </div>
@@ -191,24 +198,65 @@ export function AgentSwarmView() {
                            </div>
                         </div>
 
-                        <div className="space-y-2 pt-2">
-                           <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-500">
-                              <span>PROCESO NEURAL</span>
-                              <span className="text-blue-400">{swarm.log_count > 0 ? 'INTERVINIENDO...' : 'STANDBY (MONITORING)'}</span>
-                           </div>
-                           <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
-                              <div className={`h-full bg-gradient-to-r from-blue-500 to-indigo-600 ${swarm.log_count > 0 ? 'animate-pulse w-[85%]' : 'w-0'}`} />
-                           </div>
-                        </div>
+                         <div className="space-y-1.5 pt-2 border-t border-white/5 mt-4">
+                            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-500 mb-1">
+                               <span>Estado del Proceso</span>
+                               <span className="text-blue-400">{swarm.active_progress || (swarm.log_count > 0 ? 10 : 0)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5 mb-3">
+                               <div 
+                                 className={`h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-1000 ${swarm.active_task_status === 'processing' ? 'animate-pulse shadow-[0_0_10px_rgba(37,99,235,0.5)]' : ''}`} 
+                                 style={{ width: `${swarm.active_progress || (swarm.log_count > 0 ? 10 : 0)}%` }} 
+                               />
+                            </div>
+                            
+                            {/* Mini Step History */}
+                            <div className="space-y-2">
+                               {(swarm.task_history as any[])?.slice(-3).map((hist: any, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-2 text-[9px] font-mono text-slate-400 opacity-60">
+                                     <div className="w-1 h-1 rounded-full bg-blue-500" />
+                                     <span className="uppercase font-black text-blue-500/50">{hist.role}:</span>
+                                     <span className="truncate">{hist.summary || hist.content?.substring(0, 30)}</span>
+                                  </div>
+                               ))}
+                               {!swarm.task_history && (
+                                  <div className="text-[9px] font-mono text-slate-600 italic">Esperando secuencia neural...</div>
+                               )}
+                            </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                               <div className="flex items-center gap-1.5 font-mono text-[8px] uppercase">
+                                  <Cpu size={10} className="text-blue-400" />
+                                  <span className="text-slate-500">Engine:</span>
+                                  <span className="text-blue-400/70">NVIDIA + GEMMA</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 font-mono text-[8px] uppercase">
+                                  <ShieldCheck size={10} className={swarm.github_repo ? "text-emerald-400" : "text-slate-600"} />
+                                  <span className="text-slate-500">Sync:</span>
+                                  <span className={swarm.github_repo ? "text-emerald-400/70" : "text-slate-600"}>
+                                    {swarm.github_repo ? "READY" : "OFFLINE"}
+                                  </span>
+                                </div>
+                            </div>
+                         </div>
 
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full h-10 text-[10px] text-blue-400 hover:text-blue-300 group/btn bg-blue-500/5 mt-2 border border-blue-500/10"
-                          onClick={() => handleInteract(swarm)}
-                        >
-                           INTERACTUAR TERMINAL <ChevronRight size={10} className="ml-1 group-hover:translate-x-1 transition-transform" />
-                        </Button>
+                         <div className="flex gap-2 mt-2">
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className="flex-1 h-10 text-[10px] text-blue-400 hover:text-blue-300 group/btn bg-blue-500/5 border border-blue-500/10"
+                             onClick={() => handleInteract(swarm)}
+                           >
+                              TERMINAL <ChevronRight size={10} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                           </Button>
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className="h-10 px-3 text-slate-400 hover:text-white bg-white/5 border border-white/10"
+                             onClick={() => window.open(`${import.meta.env.BASE_URL}#/preview/${swarm.tenant_id}`, '_blank')}
+                           >
+                              <ExternalLink size={14} />
+                           </Button>
+                         </div>
                      </div>
                   </Card>
                 ))
@@ -292,37 +340,55 @@ export function AgentSwarmView() {
              </div>
 
              {selectedNode && (
-                <div className="p-4 border-t border-white/5 bg-slate-900/50 mt-auto space-y-3">
-                   <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="secondary"
-                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold h-8 uppercase"
-                        onClick={() => runManualOptimize("Redirigir agentes: Enfocarse en Conversión y UX Móvil")}
-                        disabled={isRunningOnNode}
-                      >
-                         <Bot size={12} className="mr-2" /> Redirigir Agents
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="secondary"
-                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold h-8 uppercase"
-                        onClick={() => runManualOptimize("Audit SEO e Indexación")}
-                        disabled={isRunningOnNode}
-                      >
-                         <Code size={12} className="mr-2" /> Audit SEO
-                      </Button>
-                   </div>
-                   <Button 
-                     size="sm" 
-                     className="w-full bg-blue-600 hover:bg-blue-700 text-[10px] font-black h-10 shadow-[0_0_20px_rgba(37,99,235,0.3)]"
-                     onClick={() => runManualOptimize()}
-                     disabled={isRunningOnNode}
-                   >
-                      {isRunningOnNode ? <Loader2 size={14} className="animate-spin mr-2" /> : <Zap size={14} className="mr-2" />}
-                      FORZAR OPTIMIZACIÓN NEURAL
-                   </Button>
-                </div>
+                <div className="p-4 border-t border-white/5 bg-slate-900/50 mt-auto space-y-4">
+                    <div className="relative group">
+                       <input 
+                         type="text"
+                         value={terminalInput}
+                         onChange={(e) => setTerminalInput(e.target.value)}
+                         onKeyDown={(e) => e.key === 'Enter' && runManualOptimize(terminalInput)}
+                         placeholder="Escribe comando neural... (ej: 'Cambiar a modo oscuro')"
+                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all font-mono italic"
+                       />
+                       <button 
+                         onClick={() => { runManualOptimize(terminalInput); setTerminalInput(''); }}
+                         disabled={!terminalInput || isRunningOnNode}
+                         className="absolute right-2 top-1.5 p-1.5 bg-blue-500 rounded-lg text-white opacity-0 group-focus-within:opacity-100 transition-opacity disabled:opacity-50"
+                       >
+                         <ChevronRight size={14} />
+                       </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                       <Button 
+                         size="sm" 
+                         variant="secondary"
+                         className="flex-1 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold h-8 uppercase"
+                         onClick={() => runManualOptimize("Redirigir agentes: Enfocarse en Conversión y UX Móvil")}
+                         disabled={isRunningOnNode}
+                       >
+                          <Bot size={12} className="mr-2" /> Redirigir Agents
+                       </Button>
+                       <Button 
+                         size="sm" 
+                         variant="secondary"
+                         className="flex-1 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold h-8 uppercase"
+                         onClick={() => runManualOptimize("Audit SEO e Indexación")}
+                         disabled={isRunningOnNode}
+                       >
+                          <Code size={12} className="mr-2" /> Audit SEO
+                       </Button>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-[10px] font-black h-10 shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+                      onClick={() => runManualOptimize()}
+                      disabled={isRunningOnNode}
+                    >
+                       {isRunningOnNode ? <Loader2 size={14} className="animate-spin mr-2" /> : <Zap size={14} className="mr-2" />}
+                       FORZAR OPTIMIZACIÓN NEURAL
+                    </Button>
+                 </div>
              )}
           </Card>
 

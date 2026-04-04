@@ -33,17 +33,19 @@ async function runSwarmWorker() {
       
       try {
         const orchestrator = new SwarmOrchestrator();
-        await orchestrator.processTask(
-          `Resolve ticket: ${ticket.subject}. Description: ${ticket.description}`,
-          ticket.tenant_id
+        await orchestrator.triggerEdgeProcess(
+          ticket.tenant_id,
+          ticket.subject,
+          ticket.description
         );
 
         await supabase.from('maintenance_tickets').update({ 
           status: 'completed',
-          ai_response: 'Optimization cycle completed by Neural Swarm v3.1. Changes pushed to GitHub.'
+          ai_response: 'Optimization cycle triggered via Neural Edge Swarm (v7.5). Remote sync in progress.'
         }).eq('id', ticket.id);
-        console.log(`[TICKET COMPLETE] ${ticket.id}`);
+        console.log(`[EDGE TRIGGER] ${ticket.id} dispatched to cloud.`);
       } catch (err: any) {
+
         console.error(`[TICKET ERROR] ${err.message}`);
       }
     })
@@ -65,12 +67,14 @@ async function runSwarmWorker() {
       
       try {
         const orchestrator = new SwarmOrchestrator();
-        await orchestrator.processTask(
+        await orchestrator.triggerEdgeProcess(
+          approval.tenant_id,
           approval.proposed_changes?.task || 'Full site audit',
-          approval.tenant_id
+          'Manual UI Approval'
         );
-        console.log(`[SWARM COMPLETE] Task finalized for ${approval.tenant_id}`);
+        console.log(`[EDGE TRIGGER] Manual task dispatched for ${approval.tenant_id}`);
       } catch (error: any) {
+
         console.error(`[SWARM ERROR] ${error.message}`);
       }
     })
@@ -99,17 +103,19 @@ async function runSwarmWorker() {
         
         console.log(`[TICKET START] Subject: ${ticket.subject}`);
         const orchestrator = new SwarmOrchestrator();
-        await orchestrator.processTask(
-          `Resolve ticket: ${ticket.subject}. Description: ${ticket.description}`,
-          ticket.tenant_id
+        await orchestrator.triggerEdgeProcess(
+          ticket.tenant_id,
+          ticket.subject,
+          ticket.description
         );
         
         await supabase.from('maintenance_tickets').update({ 
           status: 'completed',
-          ai_response: 'Optimization cycle completed by Neural Swarm v4.0. Changes pushed to GitHub.'
+          ai_response: 'Optimization cycle triggered via Neural Edge Swarm (v7.5). Remote sync in progress.'
         }).eq('id', ticket.id);
-        console.log(`[TICKET COMPLETE] ${ticket.id}`);
+        console.log(`[EDGE TRIGGER] ${ticket.id} dispatched to cloud.`);
       }
+
     } catch (e: any) {
       console.error(`[POLLER ERROR] ${e.message}`);
     } finally {

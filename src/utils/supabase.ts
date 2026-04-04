@@ -6,7 +6,8 @@ const getEnv = (key: string) => {
   return '';
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://bdvndbbmwdmjkadmnmyy.supabase.co';
-const supabaseKey = getEnv('VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY') || 'sb_publishable_tfvPLZ6Z5wmzh8M3xglLVw_tiKUMZId';
+export const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://bdvndbbmwdmjkadmnmyy.supabase.co';
+export const supabaseKey = getEnv('VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY') || 'sb_publishable_tfvPLZ6Z5wmzh8M3xglLVw_tiKUMZId';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+

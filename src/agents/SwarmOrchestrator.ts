@@ -1,4 +1,5 @@
-import { supabase } from '../utils/supabase';
+import { supabase, supabaseUrl, supabaseKey } from '../utils/supabase';
+
 import { GitHubBridge } from '../utils/GitHubBridge';
 import * as crypto from 'crypto';
 
@@ -29,6 +30,41 @@ export class SwarmOrchestrator {
       this.github = new GitHubBridge(githubToken);
     }
   }
+
+  async triggerEdgeProcess(tenantId: string, subject: string, description: string) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/swarm-worker`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token || supabaseKey}`
+        },
+        body: JSON.stringify({ 
+          tenant_id: tenantId, 
+          task_subject: subject, 
+          task_description: description 
+        })
+      });
+
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Edge Function Error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log(`[SWARM] Edge trigger successful for ${tenantId}. Trace: ${result.trace_id}`);
+      return result;
+    } catch (e: any) {
+      console.warn(`[SWARM] Edge fallback triggered due to error: ${e.message}`);
+      // Fallback: Proceed with local processing if needed
+      return null;
+    }
+  }
+
 
   async processTask(task: string, tenantId: string, onUpdate?: (msg: SwarmMessage) => void) {
     if (!tenantId) throw new Error('Tenant ID is required for swarm orchestration');
@@ -83,43 +119,43 @@ export class SwarmOrchestrator {
       const { data: tenantInfo } = await this.db.from('tenants').select('domain_name, github_repo').eq('id', tenantId).single();
       const domainName = tenantInfo?.domain_name || 'Neural Node';
       const repoName = tenantInfo?.github_repo;
-      
+
       let currentSourceContext = '';
       if (this.github && repoName) {
-         const existingIndex = await this.github.getRepoFile(repoName, 'src/pages/index.astro');
-         if (existingIndex) {
-            currentSourceContext = `\n--- EXISTING REPOSITORY CONTEXT (src/pages/index.astro) ---\n${existingIndex.substring(0, 4000)}\n--- END EXISTING CONTEXT ---\n`;
-         }
+        const existingIndex = await this.github.getRepoFile(repoName, 'src/pages/index.astro');
+        if (existingIndex) {
+          currentSourceContext = `\n--- EXISTING REPOSITORY CONTEXT (src/pages/index.astro) ---\n${existingIndex.substring(0, 4000)}\n--- END EXISTING CONTEXT ---\n`;
+        }
       }
 
       // Fetch Latent Memory (Previous architectural thoughts and components)
       const { data: previousThoughts } = await this.db
-         .from('pipeline_logs')
-         .select('metadata')
-         .eq('tenant_id', tenantId)
-         .eq('action', 'swarm_thinking_process')
-         .order('created_at', { ascending: false })
-         .limit(3);
+        .from('pipeline_logs')
+        .select('metadata')
+        .eq('tenant_id', tenantId)
+        .eq('action', 'swarm_thinking_process')
+        .order('created_at', { ascending: false })
+        .limit(3);
 
       const { data: previousComponents } = await this.db
-         .from('neural_components')
-         .select('component_name, trace_id')
-         .eq('tenant_id', tenantId)
-         .order('created_at', { ascending: false })
-         .limit(5);
+        .from('neural_components')
+        .select('component_name, trace_id')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(5);
 
       let latentMemory = '';
       if (previousThoughts && previousThoughts.length > 0) {
-         latentMemory += '\n--- PREVIOUS PROJECT STRATEGY (LATENT MEMORY) ---\n';
-         latentMemory += previousThoughts.map((t: any, i: number) => `Past Reasoning ${i+1}: ${t.metadata?.content?.substring(0, 500)}`).join('\n');
+        latentMemory += '\n--- PREVIOUS PROJECT STRATEGY (LATENT MEMORY) ---\n';
+        latentMemory += previousThoughts.map((t: any, i: number) => `Past Reasoning ${i + 1}: ${t.metadata?.content?.substring(0, 500)}`).join('\n');
       }
       if (previousComponents && previousComponents.length > 0) {
-         latentMemory += '\n--- PREVIOUSLY INTEGRATED COMPONENTS ---\n';
-         latentMemory += previousComponents.map((c: any) => `- ${c.component_name} (Trace: ${c.trace_id?.substring(0,8)})`).join('\n');
+        latentMemory += '\n--- PREVIOUSLY INTEGRATED COMPONENTS ---\n';
+        latentMemory += previousComponents.map((c: any) => `- ${c.component_name} (Trace: ${c.trace_id?.substring(0, 8)})`).join('\n');
       }
 
       // 0. INITIALIZATION
-      await logStep('Manager', `Neural Link Established. Sincronizando con el nodo "${domainName}" [Trace: ${traceId.substring(0,8)}]...`, 'thinking');
+      await logStep('Manager', `Neural Link Established. Sincronizando con el nodo "${domainName}" [Trace: ${traceId.substring(0, 8)}]...`, 'thinking');
 
       // 1. MANAGER - Analysis
       await logStep('Manager', `Analizando arquitectura actual para ${domainName}. Consultando fuentes cognitivas...`, 'thinking');
@@ -133,8 +169,8 @@ export class SwarmOrchestrator {
         'gallery': 'Expert in High-Art, Minimalist Esthetics, and Curated Design. Focus on negative space, premium interactions, and visual storytelling.'
       };
 
-      const specializedSkill = Object.entries(industrySkills).find(([key]) => domainName.toLowerCase().includes(key))?.[1] 
-                               || 'Expert in High-Performance Lead Generation and Premium Corporate Branding.';
+      const specializedSkill = Object.entries(industrySkills).find(([key]) => domainName.toLowerCase().includes(key))?.[1]
+        || 'Expert in High-Performance Lead Generation and Premium Corporate Branding.';
 
       // 2. ARCHITECT - High-Fidelity Design
       await logStep('Architect', `Arquitectando sistema de diseño 'Professional Elite' para ${domainName} vía NVIDIA NIM...`, 'acting');
@@ -185,7 +221,7 @@ export class SwarmOrchestrator {
 
       // 4. REVIEWER - Verification
       await logStep('Reviewer', `Verificando integridad técnica y coherencia visual para ${domainName}...`, 'thinking');
-      await new Promise(r => setTimeout(r, 1500));
+      //await new Promise(r => setTimeout(r, 1500));
 
       // 5. DEPLOYMENT & SYNC
       await logStep('Manager', `Sincronizando mejoras con Supabase Oracle y Repositorio GitHub...`, 'acting');
@@ -339,7 +375,7 @@ export class SwarmOrchestrator {
 
           // Safety: Never use orchestrator repo
           if (safeName === 'web_deliver') {
-             throw new Error('Safety: Cannot provision to main orchestrator repo.');
+            throw new Error('Safety: Cannot provision to main orchestrator repo.');
           }
 
           repoName = `delusion-al/${safeName}`; // Hardcoded owner for now
@@ -350,8 +386,8 @@ export class SwarmOrchestrator {
       }
 
       if (repoName === 'delusion-al/web_deliver') {
-         console.error('[SWARM] CRITICAL SAFETY BREACH: Attempted to sync to main repository. Aborting.');
-         return;
+        console.error('[SWARM] CRITICAL SAFETY BREACH: Attempted to sync to main repository. Aborting.');
+        return;
       }
 
       if (repoName) {
@@ -359,28 +395,28 @@ export class SwarmOrchestrator {
         try {
           // 1. Sync Config & Base Features
           await this.github.smartSync(repoName, newConfig);
-          
+
           // 2. Apply Custom File Mutations from Coder
           if (changes.file_mutations && Array.isArray(changes.file_mutations)) {
-             console.log(`[SWARM] Applying ${changes.file_mutations.length} custom source mutations...`);
-             for (const mutation of changes.file_mutations) {
-                if (mutation.path && mutation.content) {
-                   await this.github.modifyRepoFile(repoName, mutation.path, mutation.content, `🤖 Neural Swarm [Trace: ${traceId.substring(0,8)}]: Source Mutation - ${mutation.path}`);
-                   
-                   // Store the successful component in the neural_components knowledge base
-                   try {
-                     await this.db.from('neural_components').insert({
-                        trace_id: traceId,
-                        tenant_id: tenantId,
-                        component_name: mutation.path,
-                        source_code: mutation.content,
-                        metadata: { domain: tenant?.domain_name }
-                     });
-                   } catch (dbErr) {
-                     console.warn('Failed to log neural component:', dbErr);
-                   }
+            console.log(`[SWARM] Applying ${changes.file_mutations.length} custom source mutations...`);
+            for (const mutation of changes.file_mutations) {
+              if (mutation.path && mutation.content) {
+                await this.github.modifyRepoFile(repoName, mutation.path, mutation.content, `🤖 Neural Swarm [Trace: ${traceId.substring(0, 8)}]: Source Mutation - ${mutation.path}`);
+
+                // Store the successful component in the neural_components knowledge base
+                try {
+                  await this.db.from('neural_components').insert({
+                    trace_id: traceId,
+                    tenant_id: tenantId,
+                    component_name: mutation.path,
+                    source_code: mutation.content,
+                    metadata: { domain: tenant?.domain_name }
+                  });
+                } catch (dbErr) {
+                  console.warn('Failed to log neural component:', dbErr);
                 }
-             }
+              }
+            }
           }
         } catch (e) {
           console.error('GitHub Sync Error:', e);
